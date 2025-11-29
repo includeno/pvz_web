@@ -1,0 +1,5 @@
+{
+  "name": "React vs. Undead",
+  "description": "A fully functional Tower Defense game inspired by Plants vs. Zombies. While Cocos Creator is a powerful game engine for native exports, this project demonstrates how to build complex game logic, entity management, and collision detection using React 18, TypeScript, and Tailwind CSS.",
+  "requestFramePermissions": []
+}
