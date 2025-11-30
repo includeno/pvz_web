@@ -1,4 +1,5 @@
 
+
 export enum GamePhase {
   MENU = 'MENU',
   LEVEL_SELECTION = 'LEVEL_SELECTION',
@@ -68,7 +69,12 @@ export enum BaseZombieType {
   // New Large Zombies
   GARGANTUAR = 'GARGANTUAR',
   IMP = 'IMP',
-  MECH_BOSS = 'MECH_BOSS'
+  MECH_BOSS = 'MECH_BOSS',
+  // New Special Zombies
+  POLE_VAULTING = 'POLE_VAULTING',
+  DANCING = 'DANCING',
+  BACKUP_DANCER = 'BACKUP_DANCER',
+  ZOMBONI = 'ZOMBONI'
 }
 export type ZombieType = BaseZombieType | ZombieTypeString;
 
@@ -97,7 +103,7 @@ export interface Entity {
 
 export interface Effect {
   id: string;
-  type: 'EXPLOSION' | 'FIRE_ROW' | 'FREEZE' | 'BUTTER_SPLAT' | 'DOOM_EXPLOSION';
+  type: 'EXPLOSION' | 'FIRE_ROW' | 'FREEZE' | 'BUTTER_SPLAT' | 'DOOM_EXPLOSION' | 'ICE_TRAIL';
   row?: number;
   col?: number;
   createdAt: number;
@@ -116,6 +122,8 @@ export interface Plant extends Entity {
   lastActionTime: number;
   isReady: boolean;
   createdAt: number;
+  state?: 'IDLE' | 'ATTACK' | 'CHARGING'; // Added state for animation control
+  abilityCooldowns: Record<string, number>; // New: Track individual ability CDs (e.g. sun production)
 }
 
 export interface Zombie extends Entity {
@@ -129,6 +137,14 @@ export interface Zombie extends Entity {
   stunEffect: number; // 0 = not stunned
   isDying: boolean;
   dyingSince: number;
+  
+  // Ability State System
+  abilityCooldowns: Record<string, number>; // key: abilityType, value: lastUsedTime
+  activeAbility?: string | null; // Currently executing ability (e.g., 'VAULT')
+  activeAbilityTimer?: number; // When the current ability started
+  
+  // Legacy/Specific flags (to be phased out or kept for simple logic)
+  hasVaulted?: boolean;
 }
 
 export interface Projectile extends Entity {
@@ -143,6 +159,10 @@ export interface Projectile extends Entity {
   elapsedTime?: number;
   // For directional projectiles
   vector?: { x: number, y: number };
+  
+  // Customization
+  homing?: boolean;
+  visuals?: EntityVisuals;
 }
 
 export interface SunResource extends Entity {
@@ -191,6 +211,29 @@ export interface EntityVisuals extends Record<string, AnimationState | number | 
 
 export type AttackDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'UP_RIGHT' | 'DOWN_RIGHT' | 'UP_LEFT' | 'DOWN_LEFT';
 
+// --- PLANT ABILITY SYSTEM ---
+export type PlantAbilityType = 'PRODUCE_SUN' | 'SHOOT' | 'EXPLODE' | 'SQUASH' | 'FREEZE_ALL' | 'WALL' | 'BLOCK_VAULT';
+
+export interface PlantAbilityConfig {
+    type: PlantAbilityType;
+    // Common params
+    interval?: number; // ms between actions (e.g. shooting rate, sun production)
+    cooldown?: number; // ms initial delay or specific ability cooldown
+    // Sun params
+    sunValue?: number;
+    // Shoot params
+    damage?: number;
+    range?: number; // tiles
+    projectileType?: ProjectileType;
+    projectileDirection?: AttackDirection; // Optional direction override
+    projectileHoming?: boolean; // Does it track targets?
+    projectileVisuals?: EntityVisuals; // Custom visuals for the bullet
+    multiShotDelay?: number; // For repeaters (e.g. 150ms)
+    shotsPerTrigger?: number; // How many shots (e.g. 2 for repeater)
+    // Explode/Squash params
+    triggerRange?: number;
+}
+
 export interface PlantConfig {
   type: PlantType;
   name: string;
@@ -202,6 +245,28 @@ export interface PlantConfig {
   visuals?: EntityVisuals; 
   visualScale?: number;
   attackDirections?: AttackDirection[]; // If present, plant shoots in these directions without aiming check
+  abilities?: PlantAbilityConfig[]; // Dynamic abilities
+}
+
+// --- ZOMBIE ABILITY SYSTEM ---
+export type ZombieAbilityType = 'SUMMON' | 'VAULT' | 'ICE_TRAIL' | 'CRUSH_PLANTS';
+
+export interface AbilityConfig {
+  type: ZombieAbilityType;
+  cooldown?: number; // ms
+  initialCooldown?: number; // ms
+  duration?: number; // How long the state lasts (e.g. Vaulting air time)
+  
+  // Summon Params
+  summonType?: string;
+  summonCount?: number;
+  summonRadius?: number; // 1 = adjacent
+  
+  // Vault Params
+  vaultDistance?: number; // tiles to jump
+  
+  // Ice Trail
+  trailDuration?: number;
 }
 
 export interface ZombieStatConfig {
@@ -210,7 +275,8 @@ export interface ZombieStatConfig {
   damage: number;
   icon: string;
   visuals?: EntityVisuals; 
-  visualScale?: number; 
+  visualScale?: number;
+  abilities?: AbilityConfig[]; // Dynamic abilities
 }
 
 // --- NEW LEVEL SYSTEM ---

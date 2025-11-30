@@ -1,8 +1,6 @@
-
-
 import React, { useState } from 'react';
-import { PlantConfig, ZombieStatConfig, EntityVisuals, AnimationState, AttackDirection } from '../types';
-import { PLANT_STATS, ZOMBIE_STATS, INITIAL_PLANT_STATS, INITIAL_ZOMBIE_STATS } from '../constants';
+import { PlantConfig, ZombieStatConfig, EntityVisuals, AnimationState, AttackDirection, PlantAbilityType, ProjectileType } from '../types';
+import { PLANT_STATS, ZOMBIE_STATS, INITIAL_PLANT_STATS, INITIAL_ZOMBIE_STATS, DIRECTION_VECTORS } from '../constants';
 import { PixelEditor } from './PixelEditor';
 
 interface BaseEditorProps {
@@ -19,6 +17,8 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack }) => {
   // Local edit state
   const [editPlant, setEditPlant] = useState<PlantConfig | null>(null);
   const [editZombie, setEditZombie] = useState<ZombieStatConfig | null>(null);
+  const [editingAbilityIndex, setEditingAbilityIndex] = useState<number | null>(null);
+  const [editingBullet, setEditingBullet] = useState(false);
 
   // Lists - Filtered to only include BASE content (found in INITIAL_STATS)
   // This excludes any DLC loaded content.
@@ -71,12 +71,35 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack }) => {
   };
 
   const handleVisualsSave = (visuals: EntityVisuals) => {
-      if (activeTab === 'PLANTS' && editPlant) {
+      if (editingBullet && activeTab === 'PLANTS' && editPlant && editingAbilityIndex !== null) {
+          const n = [...(editPlant.abilities || [])];
+          n[editingAbilityIndex] = { ...n[editingAbilityIndex], projectileVisuals: visuals };
+          setEditPlant({ ...editPlant, abilities: n });
+      } else if (activeTab === 'PLANTS' && editPlant) {
           setEditPlant({ ...editPlant, visuals });
       } else if (activeTab === 'ZOMBIES' && editZombie) {
           setEditZombie({ ...editZombie, visuals });
       }
       setShowPixelEditor(false);
+      setEditingBullet(false);
+      setEditingAbilityIndex(null);
+  };
+
+  const handleAddAbility = (type: PlantAbilityType) => {
+      if (!editPlant) return;
+      const ability = { type, cooldown: 0 };
+      setEditPlant(prev => ({
+          ...prev!,
+          abilities: [...(prev!.abilities || []), ability]
+      }));
+  };
+
+  const handleRemoveAbility = (index: number) => {
+      if (!editPlant) return;
+      setEditPlant(prev => ({
+          ...prev!,
+          abilities: prev!.abilities?.filter((_, i) => i !== index)
+      }));
   };
 
   const toggleDirection = (dir: AttackDirection) => {
@@ -87,15 +110,32 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack }) => {
       setEditPlant({ ...editPlant, attackDirections: next });
   };
 
+  // Helper to get initial visuals with fallback to parent logic
+  const getInitialVisualsForEditor = () => {
+      if (editingBullet) {
+          if (editingAbilityIndex !== null && editPlant?.abilities?.[editingAbilityIndex]?.projectileVisuals) {
+              return editPlant.abilities[editingAbilityIndex].projectileVisuals;
+          }
+          // Fallback: Copy Plant Visuals
+          if (activeTab === 'PLANTS' && editPlant?.visuals) {
+              return JSON.parse(JSON.stringify(editPlant.visuals));
+          }
+          return undefined;
+      }
+      // Standard Editing
+      return activeTab === 'PLANTS' ? editPlant?.visuals : editZombie?.visuals;
+  };
+
   return (
-    <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="absolute inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-4">
        
        {showPixelEditor && (
            <PixelEditor 
                onClose={() => setShowPixelEditor(false)}
                onSave={handleVisualsSave}
-               entityName={activeTab === 'PLANTS' ? editPlant?.name || 'Plant' : selectedId || 'Zombie'}
-               initialVisuals={activeTab === 'PLANTS' ? editPlant?.visuals : editZombie?.visuals}
+               entityName={editingBullet ? 'Bullet' : (activeTab === 'PLANTS' ? editPlant?.name || 'Plant' : selectedId || 'Zombie')}
+               initialVisuals={getInitialVisualsForEditor()}
+               hideActionMenu={editingBullet || activeTab === 'PLANTS'}
            />
        )}
 
@@ -188,55 +228,102 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack }) => {
                          {/* FORM */}
                          <div className="flex-1 space-y-6">
                              {activeTab === 'PLANTS' && editPlant && (
-                                 <div className="grid grid-cols-2 gap-6">
-                                     <div>
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">DISPLAY NAME</label>
-                                         <input type="text" value={editPlant.name} onChange={e => setEditPlant({...editPlant, name: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
-                                     </div>
-                                     <div>
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">ICON (EMOJI)</label>
-                                         <input type="text" value={editPlant.icon} onChange={e => setEditPlant({...editPlant, icon: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-center" />
-                                     </div>
-                                     <div>
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">SUN COST</label>
-                                         <input type="number" value={editPlant.cost} onChange={e => setEditPlant({...editPlant, cost: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
-                                     </div>
-                                     <div>
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">HEALTH (HP)</label>
-                                         <input type="number" value={editPlant.health} onChange={e => setEditPlant({...editPlant, health: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
-                                     </div>
-                                     <div>
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">COOLDOWN (ms)</label>
-                                         <input type="number" value={editPlant.cooldown} onChange={e => setEditPlant({...editPlant, cooldown: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
-                                     </div>
-                                     <div>
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">VISUAL SCALE (Default 1.0)</label>
-                                         <input type="number" step="0.1" value={editPlant.visualScale || 1.0} onChange={e => setEditPlant({...editPlant, visualScale: parseFloat(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
-                                     </div>
-                                     <div className="col-span-2">
-                                         <label className="block text-slate-400 text-xs font-pixel mb-1">DESCRIPTION</label>
-                                         <textarea value={editPlant.description} onChange={e => setEditPlant({...editPlant, description: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white h-20 resize-none" />
-                                     </div>
-                                     <div className="col-span-2 bg-slate-800 p-4 rounded border border-slate-700">
-                                         <label className="block text-yellow-400 text-xs font-pixel mb-2">ATTACK DIRECTIONS (Multi-Shot)</label>
-                                         <div className="grid grid-cols-3 gap-2 w-32 mx-auto">
-                                             {['UP_LEFT', 'UP', 'UP_RIGHT', 'LEFT', 'CENTER', 'RIGHT', 'DOWN_LEFT', 'DOWN', 'DOWN_RIGHT'].map((dir, i) => {
-                                                 if (dir === 'CENTER') return <div key={i} className="w-8 h-8 flex items-center justify-center text-slate-600">🌱</div>;
-                                                 const isActive = (editPlant.attackDirections || []).includes(dir as AttackDirection);
-                                                 const arrows: Record<string, string> = { UP: '⬆️', DOWN: '⬇️', LEFT: '⬅️', RIGHT: '➡️', UP_LEFT: '↖️', UP_RIGHT: '↗️', DOWN_LEFT: '↙️', DOWN_RIGHT: '↘️' };
-                                                 return (
-                                                     <button 
-                                                        key={dir} 
-                                                        onClick={() => toggleDirection(dir as AttackDirection)}
-                                                        className={`w-8 h-8 border rounded flex items-center justify-center transition-colors ${isActive ? 'bg-green-600 border-green-400' : 'bg-slate-700 border-slate-600 hover:bg-slate-600'}`}
-                                                     >
-                                                         {arrows[dir]}
+                                 <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-slate-400 text-xs font-pixel mb-1">DISPLAY NAME</label>
+                                            <input type="text" value={editPlant.name} onChange={e => setEditPlant({...editPlant, name: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-400 text-xs font-pixel mb-1">ICON (EMOJI)</label>
+                                            <input type="text" value={editPlant.icon} onChange={e => setEditPlant({...editPlant, icon: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-center" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-400 text-xs font-pixel mb-1">SUN COST</label>
+                                            <input type="number" value={editPlant.cost} onChange={e => setEditPlant({...editPlant, cost: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-400 text-xs font-pixel mb-1">HEALTH (HP)</label>
+                                            <input type="number" value={editPlant.health} onChange={e => setEditPlant({...editPlant, health: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-400 text-xs font-pixel mb-1">COOLDOWN (ms)</label>
+                                            <input type="number" value={editPlant.cooldown} onChange={e => setEditPlant({...editPlant, cooldown: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-400 text-xs font-pixel mb-1">VISUAL SCALE (Default 1.0)</label>
+                                            <input type="number" step="0.1" value={editPlant.visualScale || 1.0} onChange={e => setEditPlant({...editPlant, visualScale: parseFloat(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* SPECIAL ABILITIES EDITOR */}
+                                    <div className="bg-slate-800/50 p-4 rounded border border-slate-700">
+                                         <div className="flex justify-between items-center mb-4">
+                                             <h4 className="text-yellow-400 text-xs font-pixel">SPECIAL ABILITIES</h4>
+                                             <div className="flex gap-1 flex-wrap">
+                                                 {['PRODUCE_SUN', 'SHOOT', 'EXPLODE', 'SQUASH', 'FREEZE_ALL', 'WALL', 'BLOCK_VAULT'].map(type => (
+                                                     <button key={type} onClick={() => handleAddAbility(type as PlantAbilityType)} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[9px] rounded border border-slate-600 text-slate-300">
+                                                         + {type}
                                                      </button>
-                                                 )
-                                             })}
+                                                 ))}
+                                             </div>
                                          </div>
-                                         <div className="text-center mt-2 text-[10px] text-slate-500">Toggle directions to enable multi-shot</div>
-                                     </div>
+                                         
+                                         <div className="space-y-3">
+                                             {editPlant.abilities?.map((ability, idx) => (
+                                                 <div key={idx} className="bg-slate-900 p-3 rounded border border-slate-600">
+                                                     <div className="flex justify-between items-center mb-2">
+                                                         <span className="text-green-400 font-bold text-xs">{ability.type}</span>
+                                                         <button onClick={() => handleRemoveAbility(idx)} className="text-red-500 hover:text-red-300 text-xs">✕</button>
+                                                     </div>
+                                                     <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-400">
+                                                         {ability.type === 'PRODUCE_SUN' && (
+                                                             <>
+                                                                <label>Interval (ms): <input type="number" value={ability.interval} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].interval = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                                <label>Sun Value: <input type="number" value={ability.sunValue} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].sunValue = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                             </>
+                                                         )}
+                                                         {ability.type === 'SHOOT' && (
+                                                             <>
+                                                                <label>Interval (ms): <input type="number" value={ability.interval} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].interval = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                                <label>Damage: <input type="number" value={ability.damage} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].damage = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                                <label>Range (tiles): <input type="number" value={ability.range} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].range = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                                <label className="col-span-3">Projectile: 
+                                                                    <select value={ability.projectileType || 'NORMAL'} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].projectileType = e.target.value as ProjectileType; setEditPlant({...editPlant, abilities: n}); }} className="bg-slate-800 px-1 rounded text-white ml-2">
+                                                                        {Object.values(ProjectileType).map(t => <option key={t} value={t}>{t}</option>)}
+                                                                    </select>
+                                                                </label>
+                                                                <label className="col-span-3 flex justify-between items-center">
+                                                                     <span>Direction:</span>
+                                                                     <select value={ability.projectileDirection || 'RIGHT'} onChange={e => { const n=[...(editPlant.abilities||[])]; n[idx].projectileDirection=e.target.value as AttackDirection; setEditPlant({...editPlant, abilities:n}); }} className="bg-slate-800 px-1 rounded text-white text-[9px]">
+                                                                         {Object.keys(DIRECTION_VECTORS).map(d => <option key={d} value={d}>{d}</option>)}
+                                                                     </select>
+                                                                </label>
+                                                                <label className="col-span-3 flex items-center gap-2">
+                                                                     <input type="checkbox" checked={!!ability.projectileHoming} onChange={e => { const n=[...(editPlant.abilities||[])]; n[idx].projectileHoming=e.target.checked; setEditPlant({...editPlant, abilities:n}); }} />
+                                                                     <span>Homing Projectile?</span>
+                                                                </label>
+                                                                <button 
+                                                                    onClick={() => { setEditingBullet(true); setEditingAbilityIndex(idx); setShowPixelEditor(true); }}
+                                                                    className="col-span-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[9px] mt-1"
+                                                                >
+                                                                     {ability.projectileVisuals ? 'Edit Bullet Art ✓' : 'Create Bullet Art'}
+                                                                </button>
+                                                             </>
+                                                         )}
+                                                         {(ability.type === 'EXPLODE' || ability.type === 'SQUASH') && (
+                                                             <>
+                                                                 <label>Trigger Range: <input type="number" step="0.1" value={ability.triggerRange} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].triggerRange = parseFloat(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                                 <label>Damage: <input type="number" value={ability.damage} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].damage = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
+                                                             </>
+                                                         )}
+                                                     </div>
+                                                 </div>
+                                             ))}
+                                             {!editPlant.abilities?.length && <div className="text-slate-600 text-xs italic p-2 text-center">No abilities added. Plant will do nothing.</div>}
+                                         </div>
+                                    </div>
+
                                  </div>
                              )}
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { EndlessSaveSlot, PlantConfig, ZombieStatConfig } from '../types';
 import { AVAILABLE_DLCS } from '../dlc';
@@ -151,7 +150,7 @@ export const EndlessModeSelector: React.FC<EndlessModeSelectorProps> = ({ onBack
   };
 
   return (
-    <div className="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-8">
+    <div className="absolute inset-0 z-[2000] bg-slate-950 flex flex-col items-center justify-center p-8">
         <h2 className="text-4xl text-purple-400 font-pixel mb-8 drop-shadow-[0_4px_0_#000]">ENDLESS MODE</h2>
         
         <div className="grid grid-cols-3 gap-6 w-full max-w-5xl h-[400px]">

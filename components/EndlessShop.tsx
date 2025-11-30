@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ConsumableType } from '../types';
 import { CONSUMABLES } from '../constants';
@@ -13,7 +12,7 @@ interface EndlessShopProps {
 
 export const EndlessShop: React.FC<EndlessShopProps> = ({ floor, score, inventory, onBuy, onContinue }) => {
   return (
-    <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-8">
+    <div className="absolute inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-8">
        <div className="w-[800px] bg-slate-800 border-4 border-yellow-600 rounded-xl p-8 shadow-2xl relative">
            
            <div className="text-center mb-8">

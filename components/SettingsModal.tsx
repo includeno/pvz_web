@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { AppSettings } from '../types';
 
@@ -29,7 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   return (
-    <div className="absolute inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm">
+    <div className="absolute inset-0 z-[2100] bg-black/80 flex items-center justify-center backdrop-blur-sm">
       <div className="bg-slate-800 border-4 border-slate-600 rounded-xl p-8 w-[500px] shadow-2xl">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl text-yellow-400 font-pixel drop-shadow-md">SETTINGS</h2>

@@ -1,7 +1,6 @@
 
-
 import React, { useEffect, useReducer, useRef, useState } from 'react';
-import { GameState, ZombieType, ProjectileType, Zombie, AnimationState } from '../types';
+import { GameState, ZombieType, ProjectileType, Zombie, AnimationState, BaseZombieType, Projectile } from '../types';
 import { ZOMBIE_STATS, COLS } from '../constants';
 
 interface EntitiesLayerProps {
@@ -36,13 +35,28 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
     if (!imgError && visuals) {
         // Determine current action state
         let action = 'idle';
-        if (isDying) action = 'die';
-        else if (zombie.isEating) action = 'attack';
         
-        // Fallback: If 'die' doesn't exist, use 'idle' (opacity handles fade out).
-        // If 'attack' doesn't exist, use 'idle'.
+        // --- ANIMATION STATE MACHINE ---
+        
+        if (zombie.activeAbility === 'VAULT') action = 'jump';
+        else if (zombie.activeAbility === 'SUMMON') action = 'summon';
+        else if (zombie.activeAbility === 'CHARGING') action = 'run';
+        else if (isDying) action = 'die';
+        else if (zombie.isEating) action = 'attack';
+        else if (zombie.type === BaseZombieType.POLE_VAULTING && !zombie.activeAbility && !zombie.hasVaulted) action = 'run'; // Pole Vault run phase
+        else action = 'walk'; // Default movement
+        
+        // Fallback Logic
         // @ts-ignore
         let animation: AnimationState = visuals[action];
+        // @ts-ignore
+        if (!animation && action === 'walk') animation = visuals['idle'];
+        // @ts-ignore
+        if (!animation && action === 'run') animation = visuals['idle'];
+        // @ts-ignore
+        if (!animation && action === 'jump') animation = visuals['idle'];
+        // @ts-ignore
+        if (!animation && action === 'summon') animation = visuals['idle'];
         // @ts-ignore
         if (!animation && action === 'attack') animation = visuals['idle'];
         // @ts-ignore
@@ -68,11 +82,14 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
         }
     }
 
+    const isVaulting = zombie.activeAbility === 'VAULT';
+
     return (
       <div
         className={`absolute text-6xl flex flex-col items-center justify-center 
           ${zombie.isEating && (imgError || !visuals) ? 'animate-pulse' : ''}
           ${isDying ? 'transition-all duration-1000 ease-in-out' : ''}
+          ${isVaulting ? 'duration-500 ease-out' : ''}
         `}
         style={{
           left: `${(zombie.position.x || 0) * 100}%`,
@@ -81,15 +98,14 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
           transformOrigin: 'bottom center',
           transform: isDying 
              ? `translate(-50%, ${offset}%) scaleX(-1) rotate(90deg) scale(0.8)` 
-             : `translate(-50%, ${offset}%) scaleX(-1) scale(${visualScale})`, 
-          // Ensure correct layering: Lower rows are "closer" to camera (higher Z-index).
-          // We add extra logic so large zombies stand "behind" rows in front of them properly.
-          zIndex: (zombie.position.row * 100) + 50,
+             : `translate(-50%, ${offset}%) scaleX(-1) scale(${visualScale}) ${isVaulting ? 'translateY(-80px)' : ''}`, 
+          // Ensure correct layering
+          zIndex: (zombie.position.row * 100) + 50 + (isVaulting ? 200 : 0),
           opacity: isDying ? 0 : 1,
           filter: isDying ? 'grayscale(100%) brightness(50%)' : 'none'
         }}
       >
-        {/* Butter Stun Visual (Scaled inverse to keep size relative to screen, or just let it scale) */}
+        {/* Butter Stun Visual */}
         {isStunned && !isDying && (
             <div className="absolute -top-6 z-50 text-4xl drop-shadow-lg animate-bounce" style={{transform: `scale(${1/visualScale})`}}>🧈</div>
         )}
@@ -113,6 +129,57 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
       </div>
     );
 };
+
+// New Sub-component for Projectiles
+const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, time }) => {
+    // Custom Visuals Logic
+    if (proj.visuals) {
+        const anim = proj.visuals['idle'] as AnimationState; // Assume 'idle' for bullet default
+        if (anim && anim.frames && anim.frames.length > 0) {
+             const fps = anim.fps || 10;
+             const frameIndex = Math.floor(time / (1000/fps)) % anim.frames.length;
+             const rotation = proj.vector ? Math.atan2(proj.vector.y, proj.vector.x) * (180/Math.PI) : 0;
+             
+             return (
+                 <div
+                    className="absolute z-20"
+                    style={{
+                      left: `${(proj.position.x || 0) * 100}%`,
+                      top: `${(proj.row * 20) + 6}%`,
+                      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+                      width: '40px', height: '40px'
+                    }}
+                 >
+                     <img src={anim.frames[frameIndex]} className="w-full h-full object-contain image-pixelated" alt="projectile" />
+                 </div>
+             )
+        }
+    }
+
+    // Default Fallback
+    let content = '🟢';
+    let styleClass = '';
+    if (proj.type === ProjectileType.FROZEN) { content = '🔵'; styleClass = 'filter hue-rotate-180 brightness-150'; }
+    else if (proj.type === ProjectileType.FIRE) { content = '🔥'; styleClass = 'scale-125 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]'; }
+    else if (proj.type === ProjectileType.MELON) { content = '🍉'; styleClass = 'scale-150 drop-shadow-xl'; }
+    else if (proj.type === ProjectileType.KERNEL) { content = '🌽'; styleClass = 'scale-75'; }
+    else if (proj.type === ProjectileType.BUTTER) { content = '🧈'; styleClass = 'scale-110 drop-shadow-md'; }
+    else if (proj.type === ProjectileType.COB) { content = '🌽'; styleClass = 'scale-[2.5] drop-shadow-2xl z-50 animate-spin-slow'; }
+    else if (proj.type === ProjectileType.STAR) { content = '⭐'; styleClass = 'scale-100 drop-shadow-lg animate-spin z-50'; }
+
+    return (
+      <div
+        className={`absolute text-2xl drop-shadow-md z-20 ${styleClass}`}
+        style={{
+          left: `${(proj.position.x || 0) * 100}%`,
+          top: `${(proj.row * 20) + 6}%`,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        {content}
+      </div>
+    );
+}
 
 export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCollectSun }) => {
   // Force update trigger
@@ -187,6 +254,26 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
                  <div key={effect.id} className="absolute inset-0 bg-blue-300/40 z-50 mix-blend-hard-light pointer-events-none animate-pulse" />
              )
          }
+         if (effect.type === 'ICE_TRAIL') {
+             // Calculate visual position
+             const top = (effect.row || 0) * 20;
+             const left = (effect.col || 0) * (100/9);
+             return (
+                <div key={effect.id}
+                    className="absolute bg-white/70 backdrop-blur-md z-10 border-t-2 border-white/50"
+                    style={{
+                        left: `${left}%`,
+                        top: `${top + 10}%`, // Lower half of the cell
+                        width: `${100/9}%`,
+                        height: '10%', // Half cell height
+                        opacity: Math.max(0, 0.8 * (1 - (Date.now() - effect.createdAt) / effect.duration)),
+                        transform: 'skewX(-10deg) scale(1.1)'
+                    }}
+                >
+                    <div className="w-full h-full bg-blue-100/30 animate-pulse"></div>
+                </div>
+             )
+         }
          return null;
       })}
 
@@ -254,31 +341,9 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
       ))}
 
       {/* Projectiles */}
-      {projectiles.map((proj) => {
-        let content = '🟢';
-        let styleClass = '';
-        if (proj.type === ProjectileType.FROZEN) { content = '🔵'; styleClass = 'filter hue-rotate-180 brightness-150'; }
-        else if (proj.type === ProjectileType.FIRE) { content = '🔥'; styleClass = 'scale-125 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]'; }
-        else if (proj.type === ProjectileType.MELON) { content = '🍉'; styleClass = 'scale-150 drop-shadow-xl'; }
-        else if (proj.type === ProjectileType.KERNEL) { content = '🌽'; styleClass = 'scale-75'; }
-        else if (proj.type === ProjectileType.BUTTER) { content = '🧈'; styleClass = 'scale-110 drop-shadow-md'; }
-        else if (proj.type === ProjectileType.COB) { content = '🌽'; styleClass = 'scale-[2.5] drop-shadow-2xl z-50 animate-spin-slow'; }
-        else if (proj.type === ProjectileType.STAR) { content = '⭐'; styleClass = 'scale-100 drop-shadow-lg animate-spin z-50'; }
-
-        return (
-          <div
-            key={proj.id}
-            className={`absolute text-2xl drop-shadow-md z-20 ${styleClass}`}
-            style={{
-              left: `${(proj.position.x || 0) * 100}%`,
-              top: `${(proj.row * 20) + 6}%`, // Use raw row float calculation for smoothness
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            {content}
-          </div>
-        );
-      })}
+      {projectiles.map((proj) => (
+          <ProjectileView key={proj.id} proj={proj} time={time} />
+      ))}
 
       {/* Zombies */}
       {zombies.map((zombie) => (

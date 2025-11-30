@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AVAILABLE_DLCS } from '../dlc';
 import { AnimationState, ZombieStatConfig } from '../types';
@@ -30,7 +29,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
   const viewingDlc = viewingDlcId ? AVAILABLE_DLCS.find(d => d.id === viewingDlcId) : null;
 
   return (
-    <div className="absolute inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
+    <div className="absolute inset-0 z-[2100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
       <div className="bg-slate-800 border-4 border-slate-600 rounded-xl w-[700px] max-h-[90vh] shadow-2xl flex flex-col">
         
         {/* VIEWING DETAILS MODE */}

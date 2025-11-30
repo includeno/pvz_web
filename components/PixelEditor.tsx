@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { EntityVisuals } from '../types';
 
@@ -7,6 +6,7 @@ interface PixelEditorProps {
   onSave: (visuals: EntityVisuals) => void;
   onClose: () => void;
   entityName: string;
+  hideActionMenu?: boolean;
 }
 
 const PREVIEW_SCALE = 4;
@@ -21,6 +21,11 @@ const PALETTE = [
   '#14532D', '#134E4A', '#164E63', '#1E3A8A'
 ];
 
+// Standard Action Keys for Suggestions
+const STANDARD_ACTIONS = [
+    'idle', 'attack', 'walk', 'run', 'jump', 'die', 'summon', 'charging', 'eating'
+];
+
 type GridData = string[]; // Length gridSize*gridSize array of hex colors or 'TRANSPARENT'
 
 // Helper: RGB to Hex
@@ -32,7 +37,7 @@ function rgbToHex(r: number, g: number, b: number) {
   return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
 }
 
-export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave, onClose, entityName }) => {
+export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave, onClose, entityName, hideActionMenu }) => {
   // --- STATE ---
   
   const [gridSize, setGridSize] = useState<number>(16);
@@ -155,13 +160,19 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
     setCurrentFrameIdx(Math.max(0, currentFrameIdx - 1));
   };
 
-  const handleCreateAction = () => {
-      if (!newActionName) return;
-      if (actions[newActionName]) { alert("Action already exists!"); return; }
+  const handleCreateAction = (name?: string) => {
+      const targetName = name || newActionName;
+      if (!targetName) return;
+      if (actions[targetName]) { 
+          // If already exists, just switch to it
+          setCurrentActionName(targetName);
+          setNewActionName('');
+          return;
+      }
       
       const blank = Array(gridSize * gridSize).fill('TRANSPARENT');
-      setActions(prev => ({ ...prev, [newActionName]: { frames: [blank], fps: 5 } }));
-      setCurrentActionName(newActionName);
+      setActions(prev => ({ ...prev, [targetName]: { frames: [blank], fps: 5 } }));
+      setCurrentActionName(targetName);
       setNewActionName('');
   };
 
@@ -302,7 +313,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
   if (isLoading) return <div className="fixed inset-0 z-[100] bg-black text-white flex items-center justify-center font-pixel">LOADING PIXELS...</div>;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[3000] bg-slate-900/95 backdrop-blur flex items-center justify-center p-4">
         <div className="bg-slate-800 border-4 border-slate-600 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden w-[1000px]">
             {/* Header */}
             <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
@@ -329,30 +340,50 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
                 {/* Tools & Palette */}
                 <div className="w-56 bg-slate-800 p-4 border-r border-slate-700 flex flex-col gap-4 overflow-y-auto">
                     
-                    {/* Actions List */}
-                    <div>
-                        <h4 className="text-xs text-slate-400 font-bold mb-2">ACTIONS</h4>
-                        <div className="flex flex-col gap-2 mb-2">
-                            {Object.keys(actions).map(actionName => (
-                                <div key={actionName} className="flex gap-1">
-                                    <button 
-                                        onClick={() => { setCurrentActionName(actionName); setCurrentFrameIdx(0); }} 
-                                        className={`flex-1 p-2 text-xs font-pixel border rounded text-left truncate ${currentActionName === actionName ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-700 border-slate-600 text-slate-400'}`}
-                                    >
-                                        {actionName.toUpperCase()}
-                                    </button>
-                                    <button onClick={() => handleDeleteAction(actionName)} className="px-2 bg-slate-700 hover:bg-red-600 text-white border border-slate-600 rounded">×</button>
-                                </div>
-                            ))}
+                    {/* Actions List (Conditionally Hidden) */}
+                    {!hideActionMenu && (
+                        <div>
+                            <h4 className="text-xs text-slate-400 font-bold mb-2">ACTIONS</h4>
+                            <div className="flex flex-col gap-2 mb-2">
+                                {Object.keys(actions).map(actionName => (
+                                    <div key={actionName} className="flex gap-1">
+                                        <button 
+                                            onClick={() => { setCurrentActionName(actionName); setCurrentFrameIdx(0); }} 
+                                            className={`flex-1 p-2 text-xs font-pixel border rounded text-left truncate ${currentActionName === actionName ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-700 border-slate-600 text-slate-400'}`}
+                                        >
+                                            {actionName.toUpperCase()}
+                                        </button>
+                                        <button onClick={() => handleDeleteAction(actionName)} className="px-2 bg-slate-700 hover:bg-red-600 text-white border border-slate-600 rounded">×</button>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* Action Quick Add Dropdown */}
+                            <label className="text-[10px] text-slate-500">Quick Add:</label>
+                            <select 
+                                onChange={(e) => {
+                                    handleCreateAction(e.target.value);
+                                    e.target.value = '';
+                                }}
+                                className="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-xs text-white mb-2"
+                            >
+                                <option value="">-- Add Action --</option>
+                                {STANDARD_ACTIONS.map(act => (
+                                    <option key={act} value={act} disabled={!!actions[act]}>
+                                        {act.toUpperCase()}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <div className="flex gap-1">
+                                <input type="text" placeholder="Custom..." value={newActionName} onChange={e => setNewActionName(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-1 text-xs text-white" />
+                                <button onClick={() => handleCreateAction()} className="text-green-400 font-bold bg-slate-700 px-2 rounded">+</button>
+                            </div>
                         </div>
-                        <div className="flex gap-1">
-                             <input type="text" placeholder="New Action..." value={newActionName} onChange={e => setNewActionName(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-1 text-xs text-white" />
-                             <button onClick={handleCreateAction} className="text-green-400 font-bold bg-slate-700 px-2 rounded">+</button>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Properties */}
-                    <div className="border-t border-slate-700 pt-4">
+                    <div className={`${!hideActionMenu ? 'border-t border-slate-700 pt-4' : ''}`}>
                         <h4 className="text-xs text-slate-400 font-bold mb-2">PLAYBACK SPEED</h4>
                         <div className="flex items-center gap-2">
                             <input 

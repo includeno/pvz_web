@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { LEVELS } from '../constants';
 import { LevelConfig } from '../types';
@@ -54,7 +53,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
   displayLevels.sort((a, b) => a.id - b.id);
 
   return (
-    <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-8">
+    <div className="absolute inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-8">
        <div className="w-[950px] h-[85vh] bg-slate-800 rounded-xl border-4 border-slate-600 p-6 shadow-2xl relative flex flex-col">
           
           {/* Header */}
