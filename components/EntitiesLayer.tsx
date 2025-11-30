@@ -27,7 +27,7 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
 
     // Visual Logic
     let renderedVisual: React.ReactNode = (
-        <span className={`filter drop-shadow-2xl transition-all duration-300 ${isFrozen ? 'hue-rotate-180 brightness-75 contrast-125 saturate-150' : ''}`}>
+        <span className={`filter drop-shadow-md transition-all duration-300 ${isFrozen ? 'hue-rotate-180 brightness-75 contrast-125 saturate-150' : ''}`}>
             {icon}
         </span>
     );
@@ -72,7 +72,7 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
                 <img 
                     src={imgSrc} 
                     className={`
-                        w-24 h-24 object-contain image-pixelated drop-shadow-2xl
+                        w-24 h-24 object-contain image-pixelated drop-shadow-sm
                         ${isFrozen ? 'brightness-50 hue-rotate-180' : ''}
                     `}
                     alt="Zombie"
@@ -107,14 +107,14 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
       >
         {/* Butter Stun Visual */}
         {isStunned && !isDying && (
-            <div className="absolute -top-6 z-50 text-4xl drop-shadow-lg animate-bounce" style={{transform: `scale(${1/visualScale})`}}>🧈</div>
+            <div className="absolute -top-6 z-50 text-4xl drop-shadow-sm animate-bounce" style={{transform: `scale(${1/visualScale})`}}>🧈</div>
         )}
 
         {renderedVisual}
         
         {/* Frozen Ice Block Visual */}
         {isFrozen && !isDying && (
-            <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-md scale-110 pointer-events-none border border-white/30" />
+            <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-sm scale-110 pointer-events-none border border-white/30" />
         )}
 
         {/* Health Bar (Only if damaged and not dying) */}
@@ -160,16 +160,16 @@ const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, ti
     let content = '🟢';
     let styleClass = '';
     if (proj.type === ProjectileType.FROZEN) { content = '🔵'; styleClass = 'filter hue-rotate-180 brightness-150'; }
-    else if (proj.type === ProjectileType.FIRE) { content = '🔥'; styleClass = 'scale-125 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]'; }
-    else if (proj.type === ProjectileType.MELON) { content = '🍉'; styleClass = 'scale-150 drop-shadow-xl'; }
+    else if (proj.type === ProjectileType.FIRE) { content = '🔥'; styleClass = 'scale-125 drop-shadow-[0_0_2px_rgba(239,68,68,0.8)]'; }
+    else if (proj.type === ProjectileType.MELON) { content = '🍉'; styleClass = 'scale-150 drop-shadow-md'; }
     else if (proj.type === ProjectileType.KERNEL) { content = '🌽'; styleClass = 'scale-75'; }
-    else if (proj.type === ProjectileType.BUTTER) { content = '🧈'; styleClass = 'scale-110 drop-shadow-md'; }
-    else if (proj.type === ProjectileType.COB) { content = '🌽'; styleClass = 'scale-[2.5] drop-shadow-2xl z-50 animate-spin-slow'; }
-    else if (proj.type === ProjectileType.STAR) { content = '⭐'; styleClass = 'scale-100 drop-shadow-lg animate-spin z-50'; }
+    else if (proj.type === ProjectileType.BUTTER) { content = '🧈'; styleClass = 'scale-110 drop-shadow-sm'; }
+    else if (proj.type === ProjectileType.COB) { content = '🌽'; styleClass = 'scale-[2.5] drop-shadow-xl z-50 animate-spin-slow'; }
+    else if (proj.type === ProjectileType.STAR) { content = '⭐'; styleClass = 'scale-100 drop-shadow-md animate-spin z-50'; }
 
     return (
       <div
-        className={`absolute text-2xl drop-shadow-md z-20 ${styleClass}`}
+        className={`absolute text-2xl drop-shadow-sm z-20 ${styleClass}`}
         style={{
           left: `${(proj.position.x || 0) * 100}%`,
           top: `${(proj.row * 20) + 6}%`,
@@ -200,7 +200,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
   const { zombies, projectiles, suns, grid, lawnCleaners, effects, decorations, time } = gameStateRef.current;
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none z-50">
       
       {/* Background Decorations (DLC Content) */}
       {decorations && decorations.map(dec => (
@@ -260,7 +260,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
              const left = (effect.col || 0) * (100/9);
              return (
                 <div key={effect.id}
-                    className="absolute bg-white/70 backdrop-blur-md z-10 border-t-2 border-white/50"
+                    className="absolute bg-white/70 backdrop-blur-sm z-10 border-t-2 border-white/50"
                     style={{
                         left: `${left}%`,
                         top: `${top + 10}%`, // Lower half of the cell
@@ -325,7 +325,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
       {lawnCleaners.map((cleaner) => (
         <div
           key={cleaner.id}
-          className={`absolute text-5xl transition-transform z-30 ${cleaner.active ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.9)]' : 'drop-shadow-xl'}`}
+          className={`absolute text-5xl transition-transform z-30 ${cleaner.active ? 'drop-shadow-[0_0_15px_rgba(255,255,255,0.9)]' : 'drop-shadow-lg'}`}
           style={{
             left: `${(cleaner.position.x || 0) * 100}%`,
             top: `${(cleaner.position.row * 20) + 2}%`,
@@ -368,7 +368,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
             transition: 'top 0.1s linear'
           }}
         >
-            <div className="text-6xl animate-spin-slow drop-shadow-[0_0_25px_rgba(253,224,71,0.9)] hover:scale-125 active:scale-95 transition-transform duration-100">
+            <div className="text-6xl animate-spin-slow drop-shadow-[0_0_15px_rgba(253,224,71,0.8)] hover:scale-125 active:scale-95 transition-transform duration-100">
                 ☀️
             </div>
             {/* Click helper ring */}

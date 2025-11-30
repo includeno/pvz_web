@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -57,7 +59,8 @@ import { initDLC, reloadDLCs, AVAILABLE_DLCS } from './dlc';
 const createGrid = () => Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
 
 // Base dimensions for the game "stage"
-const STAGE_WIDTH = 1000;
+// UPDATED: Increased to 1060 to comfortably fit 1010px content + padding
+const STAGE_WIDTH = 1060;
 const STAGE_HEIGHT = 700;
 
 const App: React.FC = () => {
@@ -533,15 +536,27 @@ const App: React.FC = () => {
           if (plantConfig.abilities) {
               plantConfig.abilities.forEach(ability => {
                   
-                  // Ability: PRODUCE SUN
+                  // Ability: PRODUCE_SUN
                   if (ability.type === 'PRODUCE_SUN') {
                       const lastProd = plant.abilityCooldowns?.[ability.type] || plant.createdAt;
                       const interval = ability.interval || 10000;
-                      if (time - lastProd > interval) {
-                          suns.push({ id: uuidv4(), position: { row: r, col: c, x: (c + 0.5) / COLS, y: r * 20 }, targetY: r * 20, value: ability.sunValue || 25, createdAt: time, isCollected: false });
+                      
+                      // Check if this plant already has an uncollected sun on the field
+                      const hasActiveSun = suns.some(s => s.sourcePlantId === plant.id && !s.isCollected);
+
+                      if (!hasActiveSun && time - lastProd > interval) {
+                          suns.push({ 
+                              id: uuidv4(), 
+                              position: { row: r, col: c, x: (c + 0.5) / COLS, y: r * 20 }, 
+                              targetY: r * 20, 
+                              value: ability.sunValue || 25, 
+                              createdAt: time, 
+                              isCollected: false,
+                              sourcePlantId: plant.id
+                          });
                           if (!plant.abilityCooldowns) plant.abilityCooldowns = {};
                           plant.abilityCooldowns[ability.type] = time;
-                          gridDirty = true; // Trigger re-render for flash effect if needed
+                          gridDirty = true; 
                       }
                   }
 
@@ -650,6 +665,20 @@ const App: React.FC = () => {
                                gridData[r][c] = null; 
                                gridDirty = true;
                           }
+                      }
+                  }
+                  
+                  // Ability: BURN_ROW (Jalapeno)
+                  if (ability.type === 'BURN_ROW') {
+                      if (time - plant.createdAt > (ability.cooldown || 1000)) {
+                           currentState.effects.push({ id: uuidv4(), type: 'FIRE_ROW', row: r, col: c, createdAt: Date.now(), duration: EFFECT_DURATIONS.FIRE_ROW });
+                           zombies.forEach(z => {
+                               if (!z.isDying && z.position.row === r) {
+                                   z.health -= (ability.damage || 9999);
+                               }
+                           });
+                           gridData[r][c] = null; 
+                           gridDirty = true;
                       }
                   }
               });
@@ -1018,8 +1047,8 @@ const App: React.FC = () => {
             )}
 
             {/* GAME STAGE LAYERS */}
-            <div className={`w-[110px] h-[560px] border-y-8 border-l-8 rounded-l-lg relative z-0 flex flex-col justify-around py-4 shadow-[inset_-10px_0_20px_rgba(0,0,0,0.5)] ${scene === LevelScene.BALCONY ? 'bg-amber-800 border-amber-950' : scene === LevelScene.FACTORY ? 'bg-slate-700 border-slate-900' : scene === LevelScene.GRAVEYARD ? 'bg-stone-800 border-stone-950' : 'bg-amber-900/40 border-amber-950'}`}> {[0,1,2,3,4].map(i => <div key={i} className="w-16 h-16 rounded-full bg-white/5 border-2 border-white/10 mx-auto" />)} </div>
-            <div className={`relative border-y-8 border-r-8 rounded-r-lg shadow-2xl ${scene === LevelScene.LAWN_NIGHT ? 'bg-indigo-950 border-indigo-900' : scene === LevelScene.BALCONY ? 'bg-amber-900 border-amber-950' : scene === LevelScene.FACTORY ? 'bg-slate-800 border-slate-900' : 'bg-green-800 border-green-900'} ${cursorClass}`} style={{ width: '900px', height: '560px' }}>
+            <div className={`w-[110px] h-[560px] shrink-0 border-y-8 border-l-8 rounded-l-lg relative z-0 flex flex-col justify-around py-4 shadow-[inset_-10px_0_20px_rgba(0,0,0,0.5)] ${scene === LevelScene.BALCONY ? 'bg-amber-800 border-amber-950' : scene === LevelScene.FACTORY ? 'bg-slate-700 border-slate-900' : scene === LevelScene.GRAVEYARD ? 'bg-stone-800 border-stone-950' : 'bg-amber-900/40 border-amber-950'}`}> {[0,1,2,3,4].map(i => <div key={i} className="w-16 h-16 rounded-full bg-white/5 border-2 border-white/10 mx-auto" />)} </div>
+            <div className={`relative shrink-0 border-y-8 border-r-8 rounded-r-lg shadow-2xl ${scene === LevelScene.LAWN_NIGHT ? 'bg-indigo-950 border-indigo-900' : scene === LevelScene.BALCONY ? 'bg-amber-900 border-amber-950' : scene === LevelScene.FACTORY ? 'bg-slate-800 border-slate-900' : 'bg-green-800 border-green-900'} ${cursorClass}`} style={{ width: '900px', height: '560px' }}>
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
                 <div className="absolute inset-0 grid grid-rows-5 grid-cols-9 gap-0 z-0"> {grid.map((row, rIndex) => (row.map((cell, cIndex) => ( <GridCell key={`${rIndex}-${cIndex}`} row={rIndex} col={cIndex} plant={cell} isDragOver={dragOverCell?.row === rIndex && dragOverCell?.col === cIndex} scene={scene} isTargeting={!!stateRef.current.targetingPlantId} /> ))))} </div>
                 <div className={`absolute inset-0 z-40`} onContextMenu={(e) => { e.preventDefault(); setSelectedPlant(null); setDragOverCell(null); setShovelActive(false); stateRef.current.targetingPlantId = null; }} onClick={(e) => handleInteraction(e, 'click')} onMouseMove={(e) => handleInteraction(e, 'hover')} onMouseLeave={(e) => handleInteraction(e, 'leave')} onDragOver={(e) => { e.preventDefault(); handleInteraction(e, 'hover'); }} onDrop={(e) => { e.preventDefault(); handleInteraction(e, 'click'); }} />

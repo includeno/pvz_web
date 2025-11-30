@@ -170,6 +170,7 @@ export interface SunResource extends Entity {
   targetY: number;
   createdAt: number;
   isCollected: boolean;
+  sourcePlantId?: string; // ID of the plant that produced this sun (if any)
 }
 
 export interface Decoration extends Entity {
@@ -212,7 +213,7 @@ export interface EntityVisuals extends Record<string, AnimationState | number | 
 export type AttackDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'UP_RIGHT' | 'DOWN_RIGHT' | 'UP_LEFT' | 'DOWN_LEFT';
 
 // --- PLANT ABILITY SYSTEM ---
-export type PlantAbilityType = 'PRODUCE_SUN' | 'SHOOT' | 'EXPLODE' | 'SQUASH' | 'FREEZE_ALL' | 'WALL' | 'BLOCK_VAULT';
+export type PlantAbilityType = 'PRODUCE_SUN' | 'SHOOT' | 'EXPLODE' | 'SQUASH' | 'FREEZE_ALL' | 'WALL' | 'BLOCK_VAULT' | 'BURN_ROW';
 
 export interface PlantAbilityConfig {
     type: PlantAbilityType;

@@ -1109,7 +1109,8 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
   },
   [BasePlantType.JALAPENO]: {
       type: BasePlantType.JALAPENO, name: 'Jalapeno', cost: 125, cooldown: 50000, health: 100, icon: '🌶️', description: 'Destroys entire row',
-      visuals: createVisuals(ART_JALAPENO, undefined, 4)
+      visuals: createVisuals(ART_JALAPENO, undefined, 4),
+      abilities: [ { type: 'BURN_ROW', cooldown: 700, damage: 9999 } ]
   },
   [BasePlantType.SPIKEWEED]: {
       type: BasePlantType.SPIKEWEED, name: 'Spikeweed', cost: 100, cooldown: 5000, health: 300, icon: '🌵', description: 'Hurts zombies stepping on it',

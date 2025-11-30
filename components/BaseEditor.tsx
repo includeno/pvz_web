@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import { PlantConfig, ZombieStatConfig, EntityVisuals, AnimationState, AttackDirection, PlantAbilityType, ProjectileType } from '../types';
 import { PLANT_STATS, ZOMBIE_STATS, INITIAL_PLANT_STATS, INITIAL_ZOMBIE_STATS, DIRECTION_VECTORS } from '../constants';
@@ -261,7 +263,7 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack }) => {
                                          <div className="flex justify-between items-center mb-4">
                                              <h4 className="text-yellow-400 text-xs font-pixel">SPECIAL ABILITIES</h4>
                                              <div className="flex gap-1 flex-wrap">
-                                                 {['PRODUCE_SUN', 'SHOOT', 'EXPLODE', 'SQUASH', 'FREEZE_ALL', 'WALL', 'BLOCK_VAULT'].map(type => (
+                                                 {['PRODUCE_SUN', 'SHOOT', 'EXPLODE', 'SQUASH', 'FREEZE_ALL', 'WALL', 'BLOCK_VAULT', 'BURN_ROW'].map(type => (
                                                      <button key={type} onClick={() => handleAddAbility(type as PlantAbilityType)} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[9px] rounded border border-slate-600 text-slate-300">
                                                          + {type}
                                                      </button>
@@ -311,7 +313,7 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack }) => {
                                                                 </button>
                                                              </>
                                                          )}
-                                                         {(ability.type === 'EXPLODE' || ability.type === 'SQUASH') && (
+                                                         {(ability.type === 'EXPLODE' || ability.type === 'SQUASH' || ability.type === 'BURN_ROW') && (
                                                              <>
                                                                  <label>Trigger Range: <input type="number" step="0.1" value={ability.triggerRange} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].triggerRange = parseFloat(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
                                                                  <label>Damage: <input type="number" value={ability.damage} onChange={e => { const n = [...(editPlant.abilities||[])]; n[idx].damage = parseInt(e.target.value); setEditPlant({...editPlant, abilities: n}); }} className="w-12 bg-slate-800 px-1 rounded text-white" /></label>
