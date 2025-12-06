@@ -10,10 +10,11 @@ interface GridCellProps {
   isDragOver: boolean;
   scene: LevelScene;
   isTargeting?: boolean; // New prop for visual feedback
+  isShovelActive?: boolean; // New prop for shovel visual feedback
 }
 
 // Memoized
-export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, isDragOver, scene, isTargeting }) => {
+export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, isDragOver, scene, isTargeting, isShovelActive }) => {
   const isOdd = (row + col) % 2 === 1;
   const isColOdd = col % 2 === 1;
 
@@ -93,11 +94,13 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
   // If targeting (Cob Cannon): highlight ANY cell.
   let highlightClass = '';
   if (isDragOver) {
-      if (isTargeting) {
+      if (isShovelActive && plant) {
+           highlightClass = 'ring-4 ring-red-500 ring-inset bg-red-500/40 z-50 cursor-pointer';
+      } else if (isTargeting) {
            highlightClass = 'brightness-125 saturate-150 ring-4 ring-red-500 ring-inset z-50 shadow-[inset_0_0_30px_rgba(239,68,68,0.5)] cursor-crosshair';
-      } else if (!plant) {
+      } else if (!plant && !isShovelActive) {
            highlightClass = 'brightness-150 shadow-[inset_0_0_20px_rgba(255,255,255,0.6)]';
-      } else if (plant.type === BasePlantType.COB_CANNON) {
+      } else if (plant && plant.type === BasePlantType.COB_CANNON && !isShovelActive) {
           // Hovering over cannon to activate it
           highlightClass = 'ring-2 ring-yellow-400 cursor-pointer brightness-125';
       }
@@ -146,6 +149,13 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
       {isDragOver && isTargeting && (
           <div className="absolute inset-0 flex items-center justify-center text-red-600 text-6xl opacity-80 pointer-events-none animate-pulse z-[60]">
               ✛
+          </div>
+      )}
+
+      {/* Shovel Remove Overlay */}
+      {isDragOver && isShovelActive && plant && (
+          <div className="absolute inset-0 flex items-center justify-center text-red-600 text-6xl drop-shadow-lg z-[60] animate-bounce pointer-events-none">
+              ❌
           </div>
       )}
 
@@ -206,6 +216,7 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
     const dragChanged = prev.isDragOver !== next.isDragOver;
     const sceneChanged = prev.scene !== next.scene;
     const targetingChanged = prev.isTargeting !== next.isTargeting;
+    const shovelChanged = prev.isShovelActive !== next.isShovelActive;
     
-    return !plantChanged && !dragChanged && !sceneChanged && !targetingChanged;
+    return !plantChanged && !dragChanged && !sceneChanged && !targetingChanged && !shovelChanged;
 });

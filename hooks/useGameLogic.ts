@@ -686,7 +686,8 @@ export const useGameLogic = ({
         } else {
              stateRef.current.grid[r][c] = null;
         }
-        setGrid([...stateRef.current.grid]);
+        // Force deep copy of grid rows to ensure React renders the removal
+        setGrid(stateRef.current.grid.map(row => [...row]));
         setShovelActive(false);
       }
       return;

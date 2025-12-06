@@ -13,6 +13,7 @@ interface GameGridProps {
   scene: LevelScene;
   targetingPlantId: string | null;
   selectedPlantType: string | null;
+  isShovelActive: boolean;
 }
 
 export const GameGrid: React.FC<GameGridProps> = ({
@@ -23,7 +24,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
   dragOverCell,
   scene,
   targetingPlantId,
-  selectedPlantType
+  selectedPlantType,
+  isShovelActive
 }) => {
 
   const isCellHighlight = (r: number, c: number) => {
@@ -58,6 +60,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
                             isDragOver={isCellHighlight(r, c)} 
                             scene={scene}
                             isTargeting={!!targetingPlantId}
+                            isShovelActive={isShovelActive}
                         />
                     </div>
                 ))

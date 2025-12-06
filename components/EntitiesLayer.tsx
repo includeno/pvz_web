@@ -80,7 +80,7 @@ const ZombieView: React.FC<{ zombie: Zombie; time: number }> = ({ zombie, time }
 
     return (
       <div
-        className={`absolute text-6xl flex flex-col items-center justify-center 
+        className={`absolute text-6xl flex flex-col items-center justify-center pointer-events-none
           ${zombie.isEating && (imgError || !visuals) ? 'animate-pulse' : ''}
           ${isDying ? 'transition-all duration-1000 ease-in-out' : ''}
           ${isVaulting ? 'duration-500 ease-out' : ''}
@@ -139,7 +139,7 @@ const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, ti
              
              return (
                  <div
-                    className="absolute z-[200]"
+                    className="absolute z-[200] pointer-events-none"
                     style={{
                       left: `${(proj.position.x || 0) * 100}%`,
                       top: `${(proj.row * rowHeight) + (rowHeight/3)}%`,
@@ -165,7 +165,7 @@ const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, ti
 
     return (
       <div
-        className={`absolute text-2xl drop-shadow-sm z-20 ${styleClass}`}
+        className={`absolute text-2xl drop-shadow-sm z-20 pointer-events-none ${styleClass}`}
         style={{
           left: `${(proj.position.x || 0) * 100}%`,
           top: `${(proj.row * rowHeight) + (rowHeight/3)}%`,
@@ -217,7 +217,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
          if (effect.type === 'FIRE_ROW') {
              return (
                  <div key={effect.id} 
-                      className="absolute left-0 w-full bg-gradient-to-r from-orange-500/80 via-red-600/80 to-yellow-500/80 z-30 animate-pulse border-y-4 border-orange-400/50"
+                      className="absolute left-0 w-full bg-gradient-to-r from-orange-500/80 via-red-600/80 to-yellow-500/80 z-30 animate-pulse border-y-4 border-orange-400/50 pointer-events-none"
                       style={{ top: `${(effect.row || 0) * rowHeight}%`, height: `${rowHeight}%` }}
                  >
                     <div className="w-full h-full flex items-center justify-around text-6xl filter drop-shadow-lg">
@@ -236,7 +236,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
          if (effect.type === 'ICE_TRAIL') {
              return (
                  <div key={effect.id} 
-                      className="absolute bg-cyan-200/40 blur-sm z-10"
+                      className="absolute bg-cyan-200/40 blur-sm z-10 pointer-events-none"
                       style={{
                           left: `${(effect.col || 0) * 11.1}%`,
                           top: `${(effect.row || 0) * rowHeight}%`,
@@ -250,7 +250,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
          return (
              <div 
                 key={effect.id} 
-                className={`absolute z-50 text-6xl drop-shadow-2xl animate-ping ${size}`}
+                className={`absolute z-50 text-6xl drop-shadow-2xl animate-ping pointer-events-none ${size}`}
                 style={{
                     left: `${(effect.col || 0) * 11.1 + 5.5}%`,
                     top: `${(effect.row || 0) * rowHeight + (rowHeight/2)}%`,
@@ -265,7 +265,7 @@ export const EntitiesLayer: React.FC<EntitiesLayerProps> = ({ gameStateRef, onCo
       {lawnCleaners.map(cleaner => (
           <div 
             key={cleaner.id}
-            className={`absolute z-20 transition-transform duration-100 ${cleaner.active ? 'animate-vibrate' : ''}`}
+            className={`absolute z-20 transition-transform duration-100 pointer-events-none ${cleaner.active ? 'animate-vibrate' : ''}`}
             style={{
                 left: `${(cleaner.position.x || -0.1) * 100}%`,
                 top: `${(cleaner.row * rowHeight) + 2}%`,

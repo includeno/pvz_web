@@ -29,7 +29,7 @@ import { EndlessShop } from './components/EndlessShop';
 import { GameHUD } from './components/GameHUD';
 import { GameGrid } from './components/GameGrid';
 import { useGameLogic } from './hooks/useGameLogic';
-import { reloadDLCs, AVAILABLE_DLCS } from './dlc';
+import { reloadDLCs, AVAILABLE_DLCS, initDLCs } from './dlc';
 import { t } from './i18n';
 
 const STAGE_WIDTH = 1050;
@@ -75,6 +75,9 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => { 
+      // Initialize Custom DLCs from Storage
+      initDLCs();
+
       const allDlcIds = AVAILABLE_DLCS.map(d => d.id);
       setEnabledDLCs(allDlcIds);
       reloadDLCs(allDlcIds);
@@ -153,6 +156,10 @@ const App: React.FC = () => {
       const nextFloor = endlessState.floor + 1;
       setEndlessState(prev => ({ ...prev, floor: nextFloor }));
       setTimeout(() => saveEndlessProgress(), 100);
+      
+      // Clear victory flag so it doesn't persist
+      engine.setUiState(prev => ({ ...prev, victory: false }));
+
       if (nextFloor % 5 === 0) {
           setGamePhase(GamePhase.ENDLESS_SHOP);
       } else {
@@ -237,6 +244,7 @@ const App: React.FC = () => {
                         scene={currentLevel.scene}
                         targetingPlantId={engine.stateRef.current.targetingPlantId}
                         selectedPlantType={selectedPlant}
+                        isShovelActive={isShovelActive}
                     />
                     <div className="absolute left-[120px] top-[20px] w-[720px] h-[540px] z-30 pointer-events-none">
                          <EntitiesLayer gameStateRef={engine.stateRef} onCollectSun={engine.handleCollectSun} />
@@ -402,8 +410,34 @@ const App: React.FC = () => {
                    <h2 className="text-6xl text-white font-pixel drop-shadow-[4px_4px_0_black] mb-2">{t('GAME_OVER', lang)}</h2>
                    <div className="text-2xl text-red-200 font-pixel mb-8">THE ZOMBIES ATE YOUR BRAINS!</div>
                    <div className="flex gap-4">
-                       <button onClick={() => { if(endlessState.active) { setGamePhase(GamePhase.MENU); engine.restoreState(); setEndlessState(prev => ({...prev, active: false})); } else startGame(currentLevel); }} className="px-8 py-4 bg-white text-red-900 font-bold font-pixel rounded shadow-xl hover:scale-105 transition-transform">{t('TRY_AGAIN', lang)}</button>
-                       <button onClick={() => { setGamePhase(GamePhase.MENU); engine.restoreState(); setEndlessState(prev => ({...prev, active: false})); }} className="px-8 py-4 bg-black text-white font-bold font-pixel rounded shadow-xl hover:scale-105 transition-transform">{t('MAIN_MENU', lang)}</button>
+                       <button 
+                           onClick={() => { 
+                               if(endlessState.active) { 
+                                   setGamePhase(GamePhase.MENU); 
+                                   engine.restoreState(); 
+                                   setEndlessState(prev => ({...prev, active: false})); 
+                                   // Reset UI State specifically to clear Game Over flag
+                                   engine.setUiState(prev => ({ ...prev, gameOver: false }));
+                               } else {
+                                   startGame(currentLevel); 
+                               }
+                           }} 
+                           className="px-8 py-4 bg-white text-red-900 font-bold font-pixel rounded shadow-xl hover:scale-105 transition-transform"
+                       >
+                           {t('TRY_AGAIN', lang)}
+                       </button>
+                       <button 
+                           onClick={() => { 
+                               setGamePhase(GamePhase.MENU); 
+                               engine.restoreState(); 
+                               setEndlessState(prev => ({...prev, active: false})); 
+                               // Reset UI State
+                               engine.setUiState(prev => ({ ...prev, gameOver: false }));
+                           }} 
+                           className="px-8 py-4 bg-black text-white font-bold font-pixel rounded shadow-xl hover:scale-105 transition-transform"
+                       >
+                           {t('MAIN_MENU', lang)}
+                       </button>
                    </div>
                </div>
            )}
@@ -424,7 +458,11 @@ const App: React.FC = () => {
                    <div className="flex gap-4">
                        <button onClick={() => { 
                            if(endlessState.active) { handleEndlessVictory(); } 
-                           else { setGamePhase(GamePhase.LEVEL_SELECTION); }
+                           else { 
+                               setGamePhase(GamePhase.LEVEL_SELECTION); 
+                               // Reset Victory state so it doesn't persist
+                               engine.setUiState(prev => ({ ...prev, victory: false }));
+                           }
                         }} className="px-8 py-4 bg-green-500 text-white font-bold font-pixel rounded shadow-xl hover:scale-105 transition-transform border-b-4 border-green-800 active:border-b-0 active:translate-y-1">
                            {endlessState.active ? t('NEXT_FLOOR', lang) : t('CONTINUE', lang)}
                        </button>
