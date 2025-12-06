@@ -33,7 +33,8 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
 
   return (
     <div className="absolute inset-0 z-[2100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
-      <div className="bg-slate-800 border-4 border-slate-600 rounded-xl w-[700px] max-h-[90vh] shadow-2xl flex flex-col">
+      {/* Changed max-h-[90vh] to max-h-[90%] to ensure it fits in game container */}
+      <div className="bg-slate-800 border-4 border-slate-600 rounded-xl w-[700px] max-h-[90%] shadow-2xl flex flex-col">
         
         {/* VIEWING DETAILS MODE */}
         {viewingDlc ? (

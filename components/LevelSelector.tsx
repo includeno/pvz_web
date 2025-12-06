@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LEVELS } from '../constants';
 import { LevelConfig } from '../types';
 import { AVAILABLE_DLCS } from '../dlc';
@@ -13,6 +13,15 @@ interface LevelSelectorProps {
 
 export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onBack, language }) => {
   const [activeTab, setActiveTab] = useState<string>('ADVENTURE');
+
+  // Handle Escape Key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onBack();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
 
   // 1. Identify Levels currently loaded in the game
   // Adventure: IDs < 100 (Classic campaign)
@@ -57,16 +66,23 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
 
   return (
     <div className="absolute inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-8">
-       <div className="w-[950px] h-[85vh] bg-slate-800 rounded-xl border-4 border-slate-600 p-6 shadow-2xl relative flex flex-col">
+       {/* Changed h-[85vh] to h-[90%] to fit within the scaled STAGE_HEIGHT correctly */}
+       <div className="w-[950px] h-[90%] bg-slate-800 rounded-xl border-4 border-slate-600 p-6 shadow-2xl relative flex flex-col">
           
           {/* Header */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 relative z-50">
               <h2 className="text-2xl font-pixel text-white drop-shadow-md">{t('SELECT_LEVEL', language)}</h2>
-              <button onClick={onBack} className="text-slate-400 hover:text-white font-bold text-2xl px-2">✕</button>
+              <button 
+                  onClick={onBack} 
+                  className="text-slate-400 hover:text-white font-bold text-2xl w-10 h-10 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 rounded-full transition-colors cursor-pointer"
+                  title={t('BACK', language)}
+              >
+                  ✕
+              </button>
           </div>
 
           {/* Horizontal Scrollable Tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-thin scrollbar-thumb-slate-600 border-b border-slate-700">
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-thin scrollbar-thumb-slate-600 border-b border-slate-700 shrink-0">
               {/* Adventure Tab */}
               <button 
                 onClick={() => setActiveTab('ADVENTURE')}
@@ -98,7 +114,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar bg-slate-900/30 rounded-lg border border-slate-700 p-4">
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar bg-slate-900/30 rounded-lg border border-slate-700 p-4 min-h-0">
               {displayLevels.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 font-pixel opacity-50">
                       <div className="text-6xl mb-4">📭</div>
@@ -147,10 +163,10 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
               )}
           </div>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex justify-center relative z-50">
              <button 
                 onClick={onBack}
-                className="px-6 py-2 text-slate-400 hover:text-white font-pixel text-sm hover:underline"
+                className="px-10 py-3 bg-slate-700 hover:bg-slate-600 text-white font-pixel text-sm rounded shadow-lg border-b-4 border-slate-900 active:border-b-0 active:translate-y-1 transition-all cursor-pointer"
              >
                  &lt; {t('BACK', language)}
              </button>
