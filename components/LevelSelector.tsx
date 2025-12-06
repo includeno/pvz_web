@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import { LEVELS } from '../constants';
 import { LevelConfig } from '../types';
 import { AVAILABLE_DLCS } from '../dlc';
+import { t, Lang } from '../i18n';
 
 interface LevelSelectorProps {
   onSelectLevel: (level: LevelConfig) => void;
   onBack: () => void;
+  language: Lang;
 }
 
-export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onBack }) => {
+export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onBack, language }) => {
   const [activeTab, setActiveTab] = useState<string>('ADVENTURE');
 
   // 1. Identify Levels currently loaded in the game
@@ -58,7 +61,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
           
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-pixel text-white drop-shadow-md">SELECT LEVEL</h2>
+              <h2 className="text-2xl font-pixel text-white drop-shadow-md">{t('SELECT_LEVEL', language)}</h2>
               <button onClick={onBack} className="text-slate-400 hover:text-white font-bold text-2xl px-2">✕</button>
           </div>
 
@@ -69,7 +72,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
                 onClick={() => setActiveTab('ADVENTURE')}
                 className={`px-6 py-2 font-pixel text-sm rounded-t-lg border-b-4 transition-all whitespace-nowrap shrink-0 ${activeTab === 'ADVENTURE' ? 'text-green-400 border-green-500 bg-slate-700' : 'text-slate-500 border-transparent hover:text-slate-300 hover:bg-slate-700/50'}`}
               >
-                  ADVENTURE
+                  {t('ADVENTURE', language)}
               </button>
 
               {/* DLC Tabs */}
@@ -89,7 +92,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
                     onClick={() => setActiveTab('CUSTOM')}
                     className={`px-6 py-2 font-pixel text-sm rounded-t-lg border-b-4 transition-all whitespace-nowrap shrink-0 ${activeTab === 'CUSTOM' ? 'text-blue-400 border-blue-500 bg-slate-700' : 'text-slate-500 border-transparent hover:text-slate-300 hover:bg-slate-700/50'}`}
                   >
-                      CUSTOM
+                      {t('CUSTOM', language)}
                   </button>
               )}
           </div>
@@ -99,7 +102,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
               {displayLevels.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 font-pixel opacity-50">
                       <div className="text-6xl mb-4">📭</div>
-                      <div>NO LEVELS FOUND</div>
+                      <div>{t('NO_LEVELS', language)}</div>
                   </div>
               ) : (
                   <div className="grid grid-cols-3 gap-6">
@@ -149,7 +152,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({ onSelectLevel, onB
                 onClick={onBack}
                 className="px-6 py-2 text-slate-400 hover:text-white font-pixel text-sm hover:underline"
              >
-                 &lt; BACK TO MENU
+                 &lt; {t('BACK', language)}
              </button>
           </div>
        </div>

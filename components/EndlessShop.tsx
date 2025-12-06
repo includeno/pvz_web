@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { ConsumableType } from '../types';
 import { CONSUMABLES } from '../constants';
+import { t, Lang } from '../i18n';
 
 interface EndlessShopProps {
   floor: number;
@@ -8,16 +10,17 @@ interface EndlessShopProps {
   inventory: Record<string, number>;
   onBuy: (type: ConsumableType, cost: number) => void;
   onContinue: () => void;
+  language: Lang;
 }
 
-export const EndlessShop: React.FC<EndlessShopProps> = ({ floor, score, inventory, onBuy, onContinue }) => {
+export const EndlessShop: React.FC<EndlessShopProps> = ({ floor, score, inventory, onBuy, onContinue, language }) => {
   return (
     <div className="absolute inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-8">
        <div className="w-[800px] bg-slate-800 border-4 border-yellow-600 rounded-xl p-8 shadow-2xl relative">
            
            <div className="text-center mb-8">
-               <h2 className="text-3xl text-yellow-400 font-pixel mb-2">MERCHANT - FLOOR {floor}</h2>
-               <div className="text-xl text-white font-mono">CREDITS: <span className="text-green-400">{score.toLocaleString()}</span></div>
+               <h2 className="text-3xl text-yellow-400 font-pixel mb-2">{t('MERCHANT', language)} - {t('FLOOR', language)} {floor}</h2>
+               <div className="text-xl text-white font-mono">{t('CREDITS', language)}: <span className="text-green-400">{score.toLocaleString()}</span></div>
            </div>
 
            <div className="grid grid-cols-2 gap-4 mb-8">
@@ -35,7 +38,7 @@ export const EndlessShop: React.FC<EndlessShopProps> = ({ floor, score, inventor
                                <div>
                                    <div className="font-bold text-white font-pixel">{item.name}</div>
                                    <div className="text-xs text-slate-400">{item.description}</div>
-                                   <div className="text-xs text-yellow-300 mt-1 font-mono">OWNED: {count}</div>
+                                   <div className="text-xs text-yellow-300 mt-1 font-mono">{t('OWNED', language)}: {count}</div>
                                </div>
                            </div>
                            
@@ -53,7 +56,7 @@ export const EndlessShop: React.FC<EndlessShopProps> = ({ floor, score, inventor
 
            <div className="flex justify-center">
                <button onClick={onContinue} className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white font-pixel text-xl rounded shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
-                   NEXT FLOOR &gt;
+                   {t('NEXT_FLOOR', language)} &gt;
                </button>
            </div>
        </div>

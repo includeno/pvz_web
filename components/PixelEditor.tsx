@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { EntityVisuals } from '../types';
+import { t, Lang } from '../i18n';
 
 interface PixelEditorProps {
   initialVisuals?: EntityVisuals;
@@ -7,6 +9,7 @@ interface PixelEditorProps {
   onClose: () => void;
   entityName: string;
   hideActionMenu?: boolean;
+  language: Lang;
 }
 
 const PREVIEW_SCALE = 4;
@@ -37,7 +40,7 @@ function rgbToHex(r: number, g: number, b: number) {
   return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
 }
 
-export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave, onClose, entityName, hideActionMenu }) => {
+export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave, onClose, entityName, hideActionMenu, language }) => {
   // --- STATE ---
   
   const [gridSize, setGridSize] = useState<number>(16);
@@ -310,7 +313,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
       onSave(exportVisuals);
   };
 
-  if (isLoading) return <div className="fixed inset-0 z-[100] bg-black text-white flex items-center justify-center font-pixel">LOADING PIXELS...</div>;
+  if (isLoading) return <div className="fixed inset-0 z-[100] bg-black text-white flex items-center justify-center font-pixel">{t('LOADING_PIXELS', language)}</div>;
 
   return (
     <div className="fixed inset-0 z-[3000] bg-slate-900/95 backdrop-blur flex items-center justify-center p-4">
@@ -318,7 +321,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
             {/* Header */}
             <div className="p-4 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-xl text-white font-pixel">PIXEL EDITOR: <span className="text-yellow-400">{entityName}</span></h2>
+                    <h2 className="text-xl text-white font-pixel">{t('PIXEL_EDITOR', language)}: <span className="text-yellow-400">{entityName}</span></h2>
                     <select 
                         value={gridSize} 
                         onChange={e => handleChangeGridSize(parseInt(e.target.value))}
@@ -331,8 +334,8 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
                     </select>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white">CANCEL</button>
-                    <button onClick={handleSave} className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white font-pixel rounded shadow">SAVE VISUALS</button>
+                    <button onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white">{t('CANCEL', language)}</button>
+                    <button onClick={handleSave} className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white font-pixel rounded shadow">{t('SAVE_VISUALS', language)}</button>
                 </div>
             </div>
 
@@ -343,7 +346,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
                     {/* Actions List (Conditionally Hidden) */}
                     {!hideActionMenu && (
                         <div>
-                            <h4 className="text-xs text-slate-400 font-bold mb-2">ACTIONS</h4>
+                            <h4 className="text-xs text-slate-400 font-bold mb-2">{t('ACTIONS', language)}</h4>
                             <div className="flex flex-col gap-2 mb-2">
                                 {Object.keys(actions).map(actionName => (
                                     <div key={actionName} className="flex gap-1">
@@ -384,7 +387,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
 
                     {/* Properties */}
                     <div className={`${!hideActionMenu ? 'border-t border-slate-700 pt-4' : ''}`}>
-                        <h4 className="text-xs text-slate-400 font-bold mb-2">PLAYBACK SPEED</h4>
+                        <h4 className="text-xs text-slate-400 font-bold mb-2">{t('PLAYBACK_SPEED', language)}</h4>
                         <div className="flex items-center gap-2">
                             <input 
                                 type="range" min="1" max="20" step="1" 
@@ -398,7 +401,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
 
                     {/* Tools */}
                     <div className="border-t border-slate-700 pt-4">
-                        <h4 className="text-xs text-slate-400 font-bold mb-2">TOOLS</h4>
+                        <h4 className="text-xs text-slate-400 font-bold mb-2">{t('TOOLS', language)}</h4>
                         <div className="flex gap-2">
                             <button onClick={() => setSelectedColor('TRANSPARENT')} className={`w-8 h-8 rounded border-2 flex items-center justify-center ${selectedColor === 'TRANSPARENT' ? 'border-white' : 'border-slate-600 bg-slate-700'}`}>
                                 ❌
@@ -408,7 +411,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
                     </div>
 
                     <div>
-                        <h4 className="text-xs text-slate-400 font-bold mb-2">PALETTE</h4>
+                        <h4 className="text-xs text-slate-400 font-bold mb-2">{t('PALETTE', language)}</h4>
                         <div className="grid grid-cols-4 gap-1">
                             {PALETTE.map(c => (
                                 <button 
@@ -443,12 +446,12 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
 
                 {/* Animation Timeline & Preview */}
                 <div className="w-64 bg-slate-800 border-l border-slate-700 p-4 flex flex-col">
-                    <h4 className="text-xs text-slate-400 font-bold mb-4">PREVIEW</h4>
+                    <h4 className="text-xs text-slate-400 font-bold mb-4">{t('PREVIEW', language)}</h4>
                     <div className="bg-black/40 rounded-lg p-4 flex justify-center border border-slate-600 mb-6">
                          <canvas ref={previewCanvasRef} className="image-pixelated bg-transparent" />
                     </div>
 
-                    <h4 className="text-xs text-slate-400 font-bold mb-2">TIMELINE</h4>
+                    <h4 className="text-xs text-slate-400 font-bold mb-2">{t('TIMELINE', language)}</h4>
                     <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                         {currentAction.frames.map((_, idx) => (
                             <div 
@@ -474,7 +477,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({ initialVisuals, onSave
                             </div>
                         ))}
                         <button onClick={handleAddFrame} className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-blue-400 text-xs font-bold border border-dashed border-slate-500 rounded">
-                            + NEW FRAME
+                            + {t('NEW_FRAME', language)}
                         </button>
                     </div>
                 </div>

@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from 'react';
 import { Plant, LevelScene, AnimationState, BasePlantType } from '../types';
 import { PLANT_STATS } from '../constants';
@@ -51,14 +49,22 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
   // Default to 'idle' action for plants
   let animName = 'idle';
   
-  // Cob Cannon Special State Logic
-  if (plant?.type === BasePlantType.COB_CANNON) {
-      if (!plant.isReady) animName = 'charging';
+  // Logic for Special States
+  if (plant) {
+      if (plant.state === 'ATTACK') {
+          animName = 'attack';
+      } else if (plant.type === BasePlantType.COB_CANNON && !plant.isReady) {
+          animName = 'charging';
+      }
   }
 
   const idleAnim = visuals?.[animName] as AnimationState | undefined;
-  const idleFrames = idleAnim?.frames || [];
-  const fps = idleAnim?.fps || 5;
+  // Fallback to idle if specific animation missing (e.g. charging might just use idle but darkened)
+  // Casting visuals['idle'] to AnimationState | undefined to avoid 'number' type inference from index signature
+  const animToUse = idleAnim || (visuals?.['idle'] as AnimationState | undefined);
+  
+  const idleFrames = animToUse?.frames || [];
+  const fps = animToUse?.fps || 5;
 
   // Reset error state when plant changes
   useEffect(() => {
@@ -139,7 +145,7 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
                 className={`
                     w-[85%] h-[85%] object-contain drop-shadow-2xl filter image-pixelated
                     ${plant.type === BasePlantType.COB_CANNON && plant.isReady ? 'brightness-110' : ''}
-                    ${plant.type === BasePlantType.COB_CANNON && !plant.isReady ? 'brightness-75 grayscale sepia' : 'brightness-110'}
+                    ${plant.type === BasePlantType.COB_CANNON && !plant.isReady && plant.state !== 'ATTACK' ? 'brightness-75 grayscale sepia' : 'brightness-110'}
                 `}
                 onError={() => setImgError(true)}
               />
@@ -148,7 +154,7 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
           )}
           
           {/* Cob Cannon Reload Bar (optional, small text) */}
-          {plant.type === BasePlantType.COB_CANNON && !plant.isReady && (
+          {plant.type === BasePlantType.COB_CANNON && !plant.isReady && plant.state !== 'ATTACK' && (
               <div className="absolute bottom-0 bg-black/50 text-white text-[8px] px-1 rounded font-mono">
                   RELOADING
               </div>
@@ -164,7 +170,8 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
     // Check if plant changed ID, Type, or if config visuals changed or if plant ready state changed
     const plantChanged = (prevPlant?.id !== nextPlant?.id) || 
                          (prevPlant?.type !== nextPlant?.type) || 
-                         (prevPlant?.isReady !== nextPlant?.isReady);
+                         (prevPlant?.isReady !== nextPlant?.isReady) ||
+                         (prevPlant?.state !== nextPlant?.state); // Added state check
     
     const dragChanged = prev.isDragOver !== next.isDragOver;
     const sceneChanged = prev.scene !== next.scene;

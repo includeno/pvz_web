@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import { AVAILABLE_DLCS } from '../dlc';
 import { AnimationState, ZombieStatConfig } from '../types';
+import { t, Lang } from '../i18n';
 
 interface DLCManagerProps {
   enabledDLCs: string[];
   onSave: (newEnabledIds: string[]) => void;
   onClose: () => void;
+  language: Lang;
 }
 
-export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onClose }) => {
+export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onClose, language }) => {
   const [selection, setSelection] = useState<string[]>([...enabledDLCs]);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingDlcId, setViewingDlcId] = useState<string | null>(null);
@@ -38,17 +41,17 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                 <div className="p-6 border-b border-slate-700 bg-slate-800 rounded-t-lg shrink-0 flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl text-yellow-400 font-pixel drop-shadow-md">{viewingDlc.name.toUpperCase()}</h2>
-                        <div className="text-slate-500 text-xs font-mono">VERSION {viewingDlc.version || '1.0'}</div>
+                        <div className="text-slate-500 text-xs font-mono">{t('VERSION', language)} {viewingDlc.version || '1.0'}</div>
                     </div>
                     <button onClick={() => setViewingDlcId(null)} className="text-slate-400 hover:text-white font-bold px-3 py-1 bg-slate-700 rounded border border-slate-600">
-                        &lt; BACK
+                        &lt; {t('BACK', language)}
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-900/50">
                     {/* PLANTS SECTION */}
                     <div>
-                        <h3 className="text-green-400 font-pixel text-sm mb-3 border-b border-slate-700 pb-1">NEW PLANTS ({viewingDlc.plants?.length || 0})</h3>
+                        <h3 className="text-green-400 font-pixel text-sm mb-3 border-b border-slate-700 pb-1">{t('NEW_PLANTS', language)} ({viewingDlc.plants?.length || 0})</h3>
                         {(!viewingDlc.plants || viewingDlc.plants.length === 0) ? (
                             <div className="text-slate-600 text-xs italic">No new plants.</div>
                         ) : (
@@ -66,7 +69,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
 
                     {/* ZOMBIES SECTION */}
                     <div>
-                        <h3 className="text-red-400 font-pixel text-sm mb-3 border-b border-slate-700 pb-1">NEW ZOMBIES ({Object.keys(viewingDlc.zombies || {}).length})</h3>
+                        <h3 className="text-red-400 font-pixel text-sm mb-3 border-b border-slate-700 pb-1">{t('NEW_ZOMBIES', language)} ({Object.keys(viewingDlc.zombies || {}).length})</h3>
                         {(!viewingDlc.zombies || Object.keys(viewingDlc.zombies).length === 0) ? (
                             <div className="text-slate-600 text-xs italic">No new zombies.</div>
                         ) : (
@@ -87,7 +90,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
 
                     {/* LEVELS SECTION */}
                     <div>
-                        <h3 className="text-blue-400 font-pixel text-sm mb-3 border-b border-slate-700 pb-1">CAMPAIGN LEVELS ({viewingDlc.levels?.length || 0})</h3>
+                        <h3 className="text-blue-400 font-pixel text-sm mb-3 border-b border-slate-700 pb-1">{t('CAMPAIGN_LEVELS', language)} ({viewingDlc.levels?.length || 0})</h3>
                         {(!viewingDlc.levels || viewingDlc.levels.length === 0) ? (
                             <div className="text-slate-600 text-xs italic">No levels included.</div>
                         ) : (
@@ -95,7 +98,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                                 {viewingDlc.levels.map((l, i) => (
                                     <div key={i} className="bg-slate-800 border border-slate-700 px-3 py-2 rounded flex justify-between items-center">
                                         <span className="text-xs text-slate-300">{l.name}</span>
-                                        <span className="text-[10px] bg-black/30 px-1 rounded text-slate-500">{l.totalWaves || l.waves?.length || 0} Waves</span>
+                                        <span className="text-[10px] bg-black/30 px-1 rounded text-slate-500">{l.totalWaves || l.waves?.length || 0} {t('WAVES', language)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -108,7 +111,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                 {/* LIST MODE HEADER */}
                 <div className="p-6 border-b border-slate-700 bg-slate-800 rounded-t-lg shrink-0">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-3xl text-blue-400 font-pixel drop-shadow-md">EXPANSION PACKS</h2>
+                        <h2 className="text-3xl text-blue-400 font-pixel drop-shadow-md">{t('EXPANSION_PACKS', language)}</h2>
                         <button onClick={onClose} className="text-slate-400 hover:text-white font-bold text-xl">✕</button>
                     </div>
                     
@@ -117,7 +120,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
                         <input 
                             type="text" 
-                            placeholder="Filter DLCs by name..." 
+                            placeholder={t('SEARCH_DLC', language)} 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full bg-slate-900 border border-slate-600 rounded py-2 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
@@ -130,7 +133,7 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                 {filteredDLCs.length === 0 && (
                     <div className="text-slate-500 text-center py-8 font-pixel opacity-70 flex flex-col items-center">
                         <span className="text-4xl mb-2">📦</span>
-                        <span>{searchQuery ? 'NO MATCHING DLCS' : 'NO DLCS FOUND'}</span>
+                        <span>{t('NO_DLCS_FOUND', language)}</span>
                     </div>
                 )}
 
@@ -165,15 +168,15 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                                         onClick={(e) => { e.stopPropagation(); setViewingDlcId(dlc.id); }}
                                         className="text-[10px] bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded font-bold border border-slate-500 shadow-sm"
                                     >
-                                        DETAILS
+                                        {t('DETAILS', language)}
                                     </button>
                                 </div>
                                 <p className="text-slate-400 text-xs mt-1 line-clamp-2 pr-16">{dlc.description || 'No description provided.'}</p>
                                 
                                 <div className="flex gap-4 mt-2 text-[10px] text-slate-500 font-mono">
-                                    <span>PLANTS: {dlc.plants?.length || 0}</span>
-                                    <span>ZOMBIES: {Object.keys(dlc.zombies || {}).length}</span>
-                                    <span>LEVELS: {dlc.levels?.length || 0}</span>
+                                    <span>{t('PLANTS', language)}: {dlc.plants?.length || 0}</span>
+                                    <span>{t('ZOMBIES', language)}: {Object.keys(dlc.zombies || {}).length}</span>
+                                    <span>{t('LEVELS', language)}: {dlc.levels?.length || 0}</span>
                                 </div>
                             </div>
                         </div>
@@ -187,13 +190,13 @@ export const DLCManager: React.FC<DLCManagerProps> = ({ enabledDLCs, onSave, onC
                         onClick={onClose}
                         className="px-6 py-3 text-slate-400 hover:text-white font-pixel text-sm hover:underline"
                     >
-                        CANCEL
+                        {t('CANCEL', language)}
                     </button>
                     <button 
                         onClick={() => onSave(selection)}
                         className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-pixel rounded shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
                     >
-                        APPLY CHANGES ({selection.length})
+                        {t('APPLY_CHANGES', language)} ({selection.length})
                     </button>
                 </div>
             </>

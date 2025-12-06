@@ -21,7 +21,8 @@ import {
   AppSettings,
   BasePlantType,
   EndlessSaveSlot,
-  ConsumableType
+  ConsumableType,
+  TrajectoryType
 } from './types';
 import {
   ROWS,
@@ -55,6 +56,7 @@ import { DLCManager } from './components/DLCManager';
 import { EndlessModeSelector } from './components/EndlessModeSelector';
 import { EndlessShop } from './components/EndlessShop';
 import { initDLC, reloadDLCs, AVAILABLE_DLCS } from './dlc';
+import { t } from './i18n';
 
 const createGrid = () => Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
 
@@ -127,8 +129,11 @@ const App: React.FC = () => {
   const [appSettings, setAppSettings] = useState<AppSettings>({
       musicVolume: 0.5,
       sfxVolume: 0.8,
-      gameSpeed: 1.0
+      gameSpeed: 1.0,
+      language: 'zh' // Default to Chinese as per prompt language, or 'en'
   });
+
+  const lang = appSettings.language;
 
   // --- ENDLESS MODE STATE ---
   const [endlessState, setEndlessState] = useState<{
@@ -274,7 +279,7 @@ const App: React.FC = () => {
       }
       return {
           id: 9000 + floor,
-          name: `ENDLESS FLOOR ${floor}`,
+          name: `${t('FLOOR', lang)} ${floor}`,
           mode: 'CLASSIC',
           scene,
           totalWaves: waves,
@@ -429,24 +434,62 @@ const App: React.FC = () => {
     }
 
     // 3. Projectiles & Physics
+    // ... [Projectile loop remains same as previous] ...
     const nextProjectiles: Projectile[] = [];
     projectiles.forEach(p => {
-        if (p.type === ProjectileType.COB) {
-            p.elapsedTime = (p.elapsedTime || 0) + (deltaTime / 1000);
-            const dx = (p.targetCol !== undefined ? (p.targetCol + 0.5) / COLS : 1) - (p.position.x || 0);
-            const dy = (p.targetRow !== undefined ? p.targetRow : p.row) - p.row;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 0.1) {
-                currentState.effects.push({ id: uuidv4(), type: 'DOOM_EXPLOSION', row: p.targetRow, col: p.targetCol, createdAt: Date.now(), duration: 1500 });
-                const r = p.targetRow || 0; const c = p.targetCol || 0;
-                currentState.zombies.forEach(z => { if (!z.isDying) { const zCol = Math.floor((z.position.x || 0) * COLS); if (Math.abs(z.position.row - r) <= 1 && Math.abs(zCol - c) <= 1) z.health -= COB_DAMAGE; } });
+        // --- BALLISTICS LOGIC ---
+        if (p.trajectory === TrajectoryType.PARABOLIC || p.trajectory === TrajectoryType.LOBBED) {
+            // Parabolic Flight (Melon Pult, Cob Cannon)
+            if (!p.startTime) p.startTime = time;
+            
+            const progress = Math.min(1, (time - p.startTime) / (p.flightDuration || 1000));
+            
+            // Linear Movement towards target
+            const startX = p.startX || 0;
+            const targetX = (p.destX !== undefined ? p.destX : p.position.x || 0);
+            
+            const startRow = p.startRow !== undefined ? p.startRow : p.row;
+            const targetRow = p.destRow !== undefined ? p.destRow : p.row;
+
+            // X-Axis Lerp
+            p.position.x = startX + (targetX - startX) * progress;
+            // Row Lerp (Vertical board movement)
+            const currentRow = startRow + (targetRow - startRow) * progress;
+            p.row = currentRow;
+
+            // Visual Y-Axis Arc (Sinewave: 0 -> 1 -> 0)
+            const arcHeight = p.arcHeight || 100;
+            p.verticalOffset = -Math.sin(progress * Math.PI) * arcHeight;
+
+            if (progress >= 1.0) {
+                // Hit Logic
+                if (p.type === ProjectileType.COB) {
+                    currentState.effects.push({ id: uuidv4(), type: 'DOOM_EXPLOSION', row: p.destRow, col: Math.round(targetX * COLS), createdAt: Date.now(), duration: 1500 });
+                    const r = p.destRow || 0; const c = Math.round(targetX * COLS);
+                    currentState.zombies.forEach(z => { if (!z.isDying) { const zCol = Math.floor((z.position.x || 0) * COLS); if (Math.abs(z.position.row - r) <= 1 && Math.abs(zCol - c) <= 1) z.health -= COB_DAMAGE; } });
+                } else if (p.type === ProjectileType.MELON || p.type === ProjectileType.KERNEL) {
+                    // Area Damage for Melon
+                    const dmgRadius = p.type === ProjectileType.MELON ? 1.5 : 0.5; // Radius in grid cells
+                    currentState.effects.push({ id: uuidv4(), type: 'EXPLOSION', row: Math.round(p.row), col: Math.round(p.position.x! * COLS), createdAt: Date.now(), duration: 300 });
+                    currentState.zombies.forEach(z => { 
+                        if (!z.isDying) {
+                            const dx = Math.abs((z.position.x || 0) - (p.position.x || 0)) * COLS;
+                            const dy = Math.abs(z.position.row - p.row);
+                            if (Math.sqrt(dx*dx + dy*dy) < dmgRadius) {
+                                z.health -= p.damage;
+                                if (p.type === ProjectileType.FROZEN) z.freezeEffect = 5000;
+                                else if (p.type === ProjectileType.BUTTER) z.stunEffect = 3000; // Kernel randomly shoots butter usually, simplified here
+                            }
+                        }
+                    });
+                }
+                // Do not add to nextProjectiles (destroy)
             } else {
-                const angle = Math.atan2(dy, dx);
-                p.position.x = (p.position.x || 0) + (Math.cos(angle) * 2.0 * (deltaTime/1000));
-                p.row += (Math.sin(angle) * 2.0 * (deltaTime/1000) * (COLS/ROWS));
                 nextProjectiles.push(p);
             }
+
         } else {
+            // STRAIGHT / STANDARD
             // -- HOMING LOGIC --
             if (p.homing && !p.vector) {
                 // Find nearest zombie in front
@@ -528,8 +571,18 @@ const App: React.FC = () => {
         if (plant) {
           const plantConfig = PLANT_STATS[plant.type];
           
+          // Reset Attack State for Animation
+          if (plant.state === 'ATTACK' && time - plant.lastActionTime > 1000) {
+              plant.state = 'IDLE';
+              gridDirty = true;
+          }
+
           // Legacy Manual Triggers (Cob Cannon / Mine arming)
-          if (plant.type === BasePlantType.COB_CANNON && !plant.isReady) { if (time - plant.lastActionTime > plantConfig.cooldown) { plant.isReady = true; gridDirty = true; } }
+          if (plant.type === BasePlantType.COB_CANNON && !plant.isReady) { 
+              if (time - plant.lastActionTime > plantConfig.cooldown) { 
+                  plant.isReady = true; gridDirty = true; 
+              } 
+          }
           if (plant.type === 'POTATO_MINE' && !plant.isReady && time - plant.createdAt > 15000) { plant.isReady = true; gridDirty = true; }
           
           // --- DATA-DRIVEN PLANT ABILITIES ---
@@ -565,59 +618,125 @@ const App: React.FC = () => {
                       const lastShot = plant.lastActionTime;
                       const interval = ability.interval || 1400;
                       
+                      // For Cob Cannon auto-fire logic (and others with standard cooldown)
                       if (time - lastShot > interval) {
-                          // Check if zombie in range
-                          let targetRows = [r]; 
-                          if (plant.type === 'THREEPEATER') targetRows = [r-1, r, r+1].filter(row => row >= 0 && row < ROWS);
-                          else if (plant.type === 'STARFRUIT') targetRows = [r]; // Starfruit shoots directions, doesn't aim per se but needs trigger?
-                          
-                          let rangeLimit = 1.1; 
-                          if (ability.range) rangeLimit = (c / COLS) + (ability.range / COLS);
-                          
-                          // Simplified: Check if ANY zombie is in relevant rows and range
-                          // For STARFRUIT, we might just shoot always? Or if enemies on screen?
-                          // Standard Shooter Logic:
-                          const zombieInSight = zombies.some(z => targetRows.includes(z.position.row) && !z.isDying && (z.position.x || 0) > (c / COLS) && (z.position.x || 0) < rangeLimit);
-                          
-                          if (zombieInSight || plant.type === 'STARFRUIT' || plant.type === 'COB_CANNON') {
-                                const fire = (row: number, delay: number = 0, vector?: {x:number, y:number}, overrideVisuals?: any) => {
-                                    setTimeout(() => {
-                                        stateRef.current.projectiles.push({ 
-                                            id: uuidv4(), 
-                                            position: { row: row, col: c, x: (c / COLS) + 0.05 }, 
-                                            damage: ability.damage || 20, 
-                                            speed: PROJECTILE_SPEED, 
-                                            row: row, 
-                                            type: ability.projectileType || ProjectileType.NORMAL,
-                                            vector: vector,
-                                            homing: ability.projectileHoming,
-                                            visuals: overrideVisuals
-                                        });
-                                    }, delay / appSettings.gameSpeed);
-                                };
 
-                                if (ability.projectileDirection) {
-                                    const dirVec = DIRECTION_VECTORS[ability.projectileDirection] || { x:1, y:0 };
-                                    fire(r, 0, dirVec, ability.projectileVisuals);
-                                } else if (plant.type === 'STARFRUIT') {
-                                    // Star pattern
-                                    fire(r, 0, {x: 1, y: 0}, ability.projectileVisuals); // Right
-                                    fire(r, 0, {x: -1, y: 0}, ability.projectileVisuals); // Left (backward)
-                                    fire(r, 0, {x: 0, y: -1}, ability.projectileVisuals); // Up
-                                    fire(r, 0, {x: 0, y: 1}, ability.projectileVisuals); // Down
-                                    fire(r, 0, {x: 0.7, y: 0.7}, ability.projectileVisuals); // Diagonals? 
-                                    // Adjust based on specific starfruit logic if needed
-                                } else if (plant.type === 'THREEPEATER') {
-                                    targetRows.forEach(tr => fire(tr, 0, undefined, ability.projectileVisuals));
-                                } else {
-                                    fire(r, 0, undefined, ability.projectileVisuals);
-                                    if (ability.shotsPerTrigger && ability.shotsPerTrigger > 1) {
-                                        for(let i=1; i<ability.shotsPerTrigger; i++) {
-                                            fire(r, (ability.multiShotDelay || 150) * i, undefined, ability.projectileVisuals);
+                          // SPECIAL LOGIC: Cob Cannon Auto-Attack
+                          if (plant.type === BasePlantType.COB_CANNON) {
+                              // Only fire if ready (manual or auto)
+                              if (plant.isReady) {
+                                  // Find Target: Leftmost Zombie
+                                  let target: Zombie | null = null;
+                                  let minX = 999;
+                                  zombies.forEach(z => {
+                                      if(!z.isDying && (z.position.x || 0) < minX) {
+                                          minX = z.position.x || 0;
+                                          target = z;
+                                      }
+                                  });
+
+                                  if (target) {
+                                      // Fire Logic
+                                      plant.state = 'ATTACK';
+                                      plant.isReady = false;
+                                      plant.lastActionTime = time; // Reset cooldown
+                                      
+                                      // Launch delayed projectile
+                                      setTimeout(() => {
+                                         stateRef.current.projectiles.push({
+                                              id: uuidv4(),
+                                              type: ProjectileType.COB,
+                                              damage: COB_DAMAGE,
+                                              speed: 0, // Handled by ballistic logic
+                                              row: r,
+                                              position: { row: r, col: c, x: (c + 0.5) / COLS },
+                                              destRow: target!.position.row,
+                                              destX: (target!.position.x || 0),
+                                              startRow: r,
+                                              startX: (c + 0.5) / COLS,
+                                              trajectory: TrajectoryType.LOBBED,
+                                              flightDuration: ability.flightDuration || 2000,
+                                              arcHeight: ability.arcHeight || 250,
+                                              visuals: ability.projectileVisuals
+                                         });
+                                      }, 500 / appSettings.gameSpeed); // Delay matching animation
+                                      
+                                      gridDirty = true;
+                                  }
+                              }
+                          } 
+                          // STANDARD SHOOTER LOGIC
+                          else {
+                                // Check if zombie in range
+                                let targetRows = [r]; 
+                                if (plant.type === 'THREEPEATER') targetRows = [r-1, r, r+1].filter(row => row >= 0 && row < ROWS);
+                                else if (plant.type === 'STARFRUIT') targetRows = [r]; 
+                                
+                                let rangeLimit = 1.1; 
+                                if (ability.range) rangeLimit = (c / COLS) + (ability.range / COLS);
+                                
+                                const zombieInSight = zombies.some(z => targetRows.includes(z.position.row) && !z.isDying && (z.position.x || 0) > (c / COLS) && (z.position.x || 0) < rangeLimit);
+                                
+                                if (zombieInSight || plant.type === 'STARFRUIT') {
+                                        const fire = (row: number, delay: number = 0, vector?: {x:number, y:number}, overrideVisuals?: any) => {
+                                            setTimeout(() => {
+                                                // Determine target for Parabolic shots
+                                                let targetX = 1.0;
+                                                let targetRow = row;
+                                                if (ability.trajectory === TrajectoryType.PARABOLIC) {
+                                                    // Find specific target to arc towards
+                                                    const target = zombies
+                                                        .filter(z => z.position.row === row && !z.isDying && (z.position.x||0) > (c/COLS))
+                                                        .sort((a,b) => (a.position.x||0) - (b.position.x||0))[0]; // Hit closest
+                                                    if (target) {
+                                                        targetX = target.position.x || 1.0;
+                                                        targetRow = target.position.row;
+                                                    }
+                                                }
+
+                                                stateRef.current.projectiles.push({ 
+                                                    id: uuidv4(), 
+                                                    position: { row: row, col: c, x: (c / COLS) + 0.05 }, 
+                                                    damage: ability.damage || 20, 
+                                                    speed: PROJECTILE_SPEED, 
+                                                    row: row, 
+                                                    type: ability.projectileType || ProjectileType.NORMAL,
+                                                    vector: vector,
+                                                    homing: ability.projectileHoming,
+                                                    visuals: overrideVisuals,
+                                                    // Trajectory Params
+                                                    trajectory: ability.trajectory || TrajectoryType.STRAIGHT,
+                                                    startX: (c / COLS) + 0.05,
+                                                    startRow: row,
+                                                    destX: targetX,
+                                                    destRow: targetRow,
+                                                    flightDuration: ability.flightDuration || 1000,
+                                                    arcHeight: ability.arcHeight || 100
+                                                });
+                                            }, delay / appSettings.gameSpeed);
+                                        };
+
+                                        if (ability.projectileDirection) {
+                                            const dirVec = DIRECTION_VECTORS[ability.projectileDirection] || { x:1, y:0 };
+                                            fire(r, 0, dirVec, ability.projectileVisuals);
+                                        } else if (plant.type === 'STARFRUIT') {
+                                            fire(r, 0, {x: 1, y: 0}, ability.projectileVisuals); 
+                                            fire(r, 0, {x: -1, y: 0}, ability.projectileVisuals); 
+                                            fire(r, 0, {x: 0, y: -1}, ability.projectileVisuals); 
+                                            fire(r, 0, {x: 0, y: 1}, ability.projectileVisuals); 
+                                            fire(r, 0, {x: 0.7, y: 0.7}, ability.projectileVisuals); 
+                                        } else if (plant.type === 'THREEPEATER') {
+                                            targetRows.forEach(tr => fire(tr, 0, undefined, ability.projectileVisuals));
+                                        } else {
+                                            fire(r, 0, undefined, ability.projectileVisuals);
+                                            if (ability.shotsPerTrigger && ability.shotsPerTrigger > 1) {
+                                                for(let i=1; i<ability.shotsPerTrigger; i++) {
+                                                    fire(r, (ability.multiShotDelay || 150) * i, undefined, ability.projectileVisuals);
+                                                }
+                                            }
                                         }
-                                    }
+                                        plant.lastActionTime = time;
                                 }
-                                plant.lastActionTime = time;
                           }
                       }
                   }
@@ -628,7 +747,7 @@ const App: React.FC = () => {
                       const target = zombies.find(z => !z.isDying && z.position.row === r && Math.abs((z.position.x || 0) - (c / COLS)) < range); 
                       
                       if (target) {
-                         if (!plant.state) { plant.state = 'ATTACK'; plant.lastActionTime = time; } 
+                         if (!plant.state || plant.state === 'IDLE') { plant.state = 'ATTACK'; plant.lastActionTime = time; } 
                          else if (plant.state === 'ATTACK' && time - plant.lastActionTime > 800) {
                              // Deal damage to all in range (AOE squash usually)
                              zombies.forEach(z => { if (!z.isDying && z.position.row === r && Math.abs((z.position.x || 0) - (c / COLS)) < range + 0.1) z.health -= (ability.damage || 9999); });
@@ -637,7 +756,6 @@ const App: React.FC = () => {
                                 gridData[r][c] = null; 
                                 gridDirty = true;
                              } else {
-                                 // Spikeweed resets state to idle? No, just keeps attacking.
                                  plant.state = 'IDLE'; 
                              }
                          }
@@ -646,15 +764,10 @@ const App: React.FC = () => {
 
                   // Ability: EXPLODE (Cherry Bomb / Doom / Mine)
                   if (ability.type === 'EXPLODE') {
-                      // Proximity Check OR Timer? 
-                      // Mines trigger on contact (handled in Zombie loop usually, but let's check proximity here too)
                       const range = ability.triggerRange || 1.5;
                       const isMine = plant.type === 'POTATO_MINE';
-                      
-                      // For Instant Explosives (Cherry Bomb), trigger via timer from creation
                       if (!isMine) {
                           if (time - plant.createdAt > (ability.cooldown || 1000)) {
-                               // BOOM
                                const type = plant.type === 'DOOM_SHROOM' ? 'DOOM_EXPLOSION' : 'EXPLOSION';
                                currentState.effects.push({ id: uuidv4(), type: type as any, row: r, col: c, createdAt: Date.now(), duration: 1000 });
                                zombies.forEach(z => {
@@ -688,6 +801,7 @@ const App: React.FC = () => {
     }
 
     // --- ZOMBIE LOOP ---
+    // ... [Zombie loop remains same] ...
     const aliveZombies: Zombie[] = [];
     currentState.zombies.forEach(zombie => {
        if (zombie.isDying) { if (time - zombie.dyingSince < 800) aliveZombies.push(zombie); return; }
@@ -821,9 +935,9 @@ const App: React.FC = () => {
        if (!isEating && zombie.stunEffect <= 0 && zombie.activeAbility !== 'VAULT') zombie.position.x = zombieX - (currentSpeed * (deltaTime / 1000));
        zombie.isEating = isEating;
 
-       // ... [Projectile Collision Logic kept same] ...
+       // ... [Collision Hit logic] ...
        const hit = nextProjectiles.filter(p => {
-           if (p.type === ProjectileType.COB) return false;
+           if (p.trajectory === TrajectoryType.PARABOLIC || p.trajectory === TrajectoryType.LOBBED) return false;
            if (!p.vector) { return p.row === zombie.position.row && Math.abs((p.position.x || 0) - (zombie.position.x || 0)) < 0.05; } 
            else { const dx = Math.abs((p.position.x || 0) - (zombie.position.x || 0)); const dy = Math.abs(p.row - zombie.position.row); return dy < 0.5 && dx < 0.05; }
        });
@@ -863,7 +977,7 @@ const App: React.FC = () => {
     }
     
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [currentLevel, isPaused, appSettings.gameSpeed, unlockedPlants, endlessState.active]);
+  }, [currentLevel, isPaused, appSettings.gameSpeed, unlockedPlants, endlessState.active, lang]);
 
   // ... [Handlers kept same] ...
   const handleCollectSun = useCallback((id: string) => { const sunIndex = stateRef.current.suns.findIndex(s => s.id === id); if (sunIndex > -1) { const amount = stateRef.current.suns[sunIndex].value; stateRef.current.suns.splice(sunIndex, 1); stateRef.current.sun += amount; setUiState(prev => ({ ...prev, sun: stateRef.current.sun })); } }, []);
@@ -873,7 +987,46 @@ const App: React.FC = () => {
       if (isPaused) return;
       const currentGrid = stateRef.current.grid;
       if (isShovelActive) { if (currentGrid[row][col]) { currentGrid[row][col] = null; setGrid(currentGrid.map(row => [...row])); setShovelActive(false); } return; }
-      if (stateRef.current.targetingPlantId) { const cannonId = stateRef.current.targetingPlantId; let cannon: Plant | null = null; for(let r=0; r<ROWS; r++) { for(let c=0; c<COLS; c++) { if (currentGrid[r][c]?.id === cannonId) { cannon = currentGrid[r][c]; break; } } } if (cannon) { cannon.isReady = false; cannon.lastActionTime = stateRef.current.time; stateRef.current.projectiles.push({ id: uuidv4(), type: ProjectileType.COB, damage: COB_DAMAGE, speed: 2.0, row: cannon.position.row, position: { row: cannon.position.row, col: cannon.position.col, x: (cannon.position.col + 0.5) / COLS }, targetRow: row, targetCol: col, elapsedTime: 0 }); } stateRef.current.targetingPlantId = null; setDragOverCell(null); return; }
+      
+      // Manual Targeting Logic for Cob Cannon
+      if (stateRef.current.targetingPlantId) { 
+          const cannonId = stateRef.current.targetingPlantId; 
+          let cannon: Plant | null = null; 
+          for(let r=0; r<ROWS; r++) { for(let c=0; c<COLS; c++) { if (currentGrid[r][c]?.id === cannonId) { cannon = currentGrid[r][c]; break; } } } 
+          
+          if (cannon && cannon.isReady) { 
+             cannon.state = 'ATTACK';
+             cannon.isReady = false; 
+             cannon.lastActionTime = stateRef.current.time; 
+             
+             // Get visuals from config
+             const config = PLANT_STATS[cannon.type];
+             const visuals = config.abilities?.find(a => a.type === 'SHOOT')?.projectileVisuals;
+
+             setTimeout(() => {
+                 stateRef.current.projectiles.push({ 
+                     id: uuidv4(), 
+                     type: ProjectileType.COB, 
+                     damage: COB_DAMAGE, 
+                     speed: 0, 
+                     row: cannon!.position.row, 
+                     position: { row: cannon!.position.row, col: cannon!.position.col, x: (cannon!.position.col + 0.5) / COLS }, 
+                     destRow: row,
+                     destX: (col + 0.5) / COLS,
+                     startRow: cannon!.position.row,
+                     startX: (cannon!.position.col + 0.5) / COLS,
+                     trajectory: TrajectoryType.LOBBED,
+                     flightDuration: 2000,
+                     arcHeight: 250,
+                     visuals: visuals 
+                 }); 
+             }, 500); // Delay match animation
+          } 
+          stateRef.current.targetingPlantId = null; 
+          setDragOverCell(null); 
+          return; 
+      }
+      
       if (!selectedPlant) { const plant = currentGrid[row][col]; if (plant && plant.type === BasePlantType.COB_CANNON && plant.isReady) { stateRef.current.targetingPlantId = plant.id; setDragOverCell(null); return; } return; }
       const cost = PLANT_STATS[selectedPlant].cost;
       if (currentGrid[row][col] === null && stateRef.current.sun >= cost) {
@@ -922,37 +1075,39 @@ const App: React.FC = () => {
       {gamePhase === GamePhase.MENU && (
          <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center">
             <button onClick={() => setShowSettings(true)} className="absolute top-4 left-4 p-2 text-2xl bg-slate-800 rounded-full hover:bg-slate-700 transition-colors z-50 border-2 border-slate-600 shadow-lg" title="Settings">⚙️</button>
-            <h1 className="font-pixel text-6xl text-green-400 mb-8 drop-shadow-xl animate-bounce tracking-wider">REACT VS UNDEAD</h1>
+            <h1 className="font-pixel text-6xl text-green-400 mb-8 drop-shadow-xl animate-bounce tracking-wider">{t('GAME_TITLE', lang)}</h1>
             <div className="w-64 h-2 bg-green-800 mb-12 rounded-full overflow-hidden"><div className="w-full h-full bg-green-500 animate-pulse"></div></div>
             <div className="flex flex-col gap-4">
-                <button onClick={() => { setGamePhase(GamePhase.LEVEL_SELECTION); restoreGameState(); }} className="px-12 py-4 bg-green-600 hover:bg-green-500 hover:scale-105 transition-all text-white font-bold rounded text-2xl font-pixel shadow-[0_0_20px_rgba(74,222,128,0.4)] border-b-8 border-green-800 active:border-b-0 active:translate-y-2">ADVENTURE</button>
-                <button onClick={() => setGamePhase(GamePhase.EDITOR_MENU)} className="px-12 py-3 bg-blue-600 hover:bg-blue-500 hover:scale-105 transition-all text-white font-bold rounded text-lg font-pixel shadow-lg border-b-8 border-blue-800 active:border-b-0 active:translate-y-2 flex items-center gap-2 justify-center"><span>🛠️</span> EDITOR</button>
-                <button onClick={() => setGamePhase(GamePhase.ENDLESS_SELECTION)} className="px-12 py-3 bg-red-600 hover:bg-red-500 hover:scale-105 transition-all text-white font-bold rounded text-lg font-pixel shadow-[0_0_25px_rgba(220,38,38,0.5)] border-b-8 border-red-800 active:border-b-0 active:translate-y-2 flex items-center gap-2 justify-center"><span>♾️</span> ENDLESS MODE</button>
-                <button onClick={() => setShowDLCManager(true)} className="px-12 py-3 bg-purple-600 hover:bg-purple-500 hover:scale-105 transition-all text-white font-bold rounded text-lg font-pixel shadow-lg border-b-8 border-purple-800 active:border-b-0 active:translate-y-2 flex items-center gap-2 justify-center"><span>📦</span> DLC ({enabledDLCs.length})</button>
+                <button onClick={() => { setGamePhase(GamePhase.LEVEL_SELECTION); restoreGameState(); }} className="px-12 py-4 bg-green-600 hover:bg-green-500 hover:scale-105 transition-all text-white font-bold rounded text-2xl font-pixel shadow-[0_0_20px_rgba(74,222,128,0.4)] border-b-8 border-green-800 active:border-b-0 active:translate-y-2">{t('ADVENTURE', lang)}</button>
+                <button onClick={() => setGamePhase(GamePhase.EDITOR_MENU)} className="px-12 py-3 bg-blue-600 hover:bg-blue-500 hover:scale-105 transition-all text-white font-bold rounded text-lg font-pixel shadow-lg border-b-8 border-blue-800 active:border-b-0 active:translate-y-2 flex items-center gap-2 justify-center"><span>🛠️</span> {t('EDITOR', lang)}</button>
+                <button onClick={() => setGamePhase(GamePhase.ENDLESS_SELECTION)} className="px-12 py-3 bg-red-600 hover:bg-red-500 hover:scale-105 transition-all text-white font-bold rounded text-lg font-pixel shadow-[0_0_25px_rgba(220,38,38,0.5)] border-b-8 border-red-800 active:border-b-0 active:translate-y-2 flex items-center gap-2 justify-center"><span>♾️</span> {t('ENDLESS_MODE', lang)}</button>
+                <button onClick={() => setShowDLCManager(true)} className="px-12 py-3 bg-purple-600 hover:bg-purple-500 hover:scale-105 transition-all text-white font-bold rounded text-lg font-pixel shadow-lg border-b-8 border-purple-800 active:border-b-0 active:translate-y-2 flex items-center gap-2 justify-center"><span>📦</span> {t('DLC_MANAGER', lang)} ({enabledDLCs.length})</button>
             </div>
-            <div className="mt-8 text-slate-500 font-pixel text-xs">VERSION 3.1 - SCALING FIX</div>
+            <div className="mt-8 text-slate-500 font-pixel text-xs">{t('VERSION_INFO', lang)}</div>
          </div>
       )}
-      {/* ... [Rest of components remain unchanged, just importing the new loop logic implicitly via useCallback update] ... */}
-      {/* ... keeping the rest of the render logic identical ... */}
+      
+      {/* ... [Game Stage Components] ... */}
+      {/* Passing lang prop implicitly via appSettings inside SettingsModal, and directly to other components */}
+      
       {gamePhase === GamePhase.EDITOR_MENU && (
           <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center">
-              <h2 className="text-4xl text-blue-400 font-pixel mb-12 drop-shadow-[0_4px_0_#000] animate-pulse">EDITOR MENU</h2>
+              <h2 className="text-4xl text-blue-400 font-pixel mb-12 drop-shadow-[0_4px_0_#000] animate-pulse">{t('EDITOR_MENU', lang)}</h2>
               <div className="flex gap-8">
-                  <button onClick={() => { setGamePhase(GamePhase.BASE_EDITOR); restoreGameState(); }} className="w-72 h-72 bg-amber-900/20 hover:bg-amber-800/40 border-4 border-amber-600 rounded-xl p-6 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(217,119,6,0.3)] group"><div className="text-7xl group-hover:scale-110 transition-transform drop-shadow-xl">⚙️</div><div className="flex flex-col items-center"><div className="text-2xl text-amber-400 font-pixel text-center leading-tight">BASE<br/>EDITOR</div><div className="w-12 h-1 bg-amber-600 rounded-full my-3 group-hover:w-24 transition-all"></div></div><div className="text-xs text-amber-200/60 text-center font-mono leading-relaxed px-4">Modify core game stats.<br/>Tweak balance of vanilla plants and zombies.</div></button>
-                  <button onClick={() => { setGamePhase(GamePhase.LEVEL_EDITOR); restoreGameState(); }} className="w-72 h-72 bg-blue-900/20 hover:bg-blue-800/40 border-4 border-blue-600 rounded-xl p-6 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(37,99,235,0.3)] group"><div className="text-7xl group-hover:scale-110 transition-transform drop-shadow-xl">📦</div><div className="flex flex-col items-center"><div className="text-2xl text-blue-400 font-pixel text-center leading-tight">DLC / LEVEL<br/>EDITOR</div><div className="w-12 h-1 bg-blue-600 rounded-full my-3 group-hover:w-24 transition-all"></div></div><div className="text-xs text-blue-200/60 text-center font-mono leading-relaxed px-4">Create new DLC packs.<br/>Design custom levels, plants, and zombies.</div></button>
+                  <button onClick={() => { setGamePhase(GamePhase.BASE_EDITOR); restoreGameState(); }} className="w-72 h-72 bg-amber-900/20 hover:bg-amber-800/40 border-4 border-amber-600 rounded-xl p-6 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(217,119,6,0.3)] group"><div className="text-7xl group-hover:scale-110 transition-transform drop-shadow-xl">⚙️</div><div className="flex flex-col items-center"><div className="text-2xl text-amber-400 font-pixel text-center leading-tight whitespace-pre-line">{t('BASE_EDITOR', lang).replace(' ', '\n')}</div><div className="w-12 h-1 bg-amber-600 rounded-full my-3 group-hover:w-24 transition-all"></div></div><div className="text-xs text-amber-200/60 text-center font-mono leading-relaxed px-4 whitespace-pre-line">{t('BASE_EDITOR_DESC', lang)}</div></button>
+                  <button onClick={() => { setGamePhase(GamePhase.LEVEL_EDITOR); restoreGameState(); }} className="w-72 h-72 bg-blue-900/20 hover:bg-blue-800/40 border-4 border-blue-600 rounded-xl p-6 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(37,99,235,0.3)] group"><div className="text-7xl group-hover:scale-110 transition-transform drop-shadow-xl">📦</div><div className="flex flex-col items-center"><div className="text-2xl text-blue-400 font-pixel text-center leading-tight whitespace-pre-line">{t('DLC_EDITOR', lang).replace('DLC /', 'DLC\n')}</div><div className="w-12 h-1 bg-blue-600 rounded-full my-3 group-hover:w-24 transition-all"></div></div><div className="text-xs text-blue-200/60 text-center font-mono leading-relaxed px-4 whitespace-pre-line">{t('DLC_EDITOR_DESC', lang)}</div></button>
               </div>
-              <button onClick={() => setGamePhase(GamePhase.MENU)} className="mt-16 px-8 py-3 text-slate-400 hover:text-white font-pixel text-xl hover:underline transition-colors">&lt; BACK TO MENU</button>
+              <button onClick={() => setGamePhase(GamePhase.MENU)} className="mt-16 px-8 py-3 text-slate-400 hover:text-white font-pixel text-xl hover:underline transition-colors">&lt; {t('BACK', lang)}</button>
           </div>
       )}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} settings={appSettings} onUpdateSettings={setAppSettings} />
-      {showDLCManager && <DLCManager enabledDLCs={enabledDLCs} onSave={handleSaveDLCs} onClose={() => setShowDLCManager(false)} />}
-      {gamePhase === GamePhase.LEVEL_SELECTION && <LevelSelector onSelectLevel={handleLevelSelect} onBack={() => setGamePhase(GamePhase.MENU)} />}
-      {gamePhase === GamePhase.LEVEL_EDITOR && <LevelEditor onPlay={handleEditorPlay} onBack={() => setGamePhase(GamePhase.EDITOR_MENU)} />}
-      {gamePhase === GamePhase.BASE_EDITOR && <BaseEditor onBack={() => setGamePhase(GamePhase.EDITOR_MENU)} />}
-      {gamePhase === GamePhase.ENDLESS_SELECTION && <EndlessModeSelector onBack={() => setGamePhase(GamePhase.MENU)} onStartGame={handleStartEndless} />}
-      {gamePhase === GamePhase.ENDLESS_SHOP && <EndlessShop floor={endlessState.floor} score={stateRef.current.score} inventory={endlessState.inventory} onBuy={(type, cost) => { stateRef.current.score -= cost; setEndlessState(prev => ({ ...prev, inventory: { ...prev.inventory, [type]: (prev.inventory[type] || 0) + 1 } })); setUiState(prev => ({ ...prev, score: stateRef.current.score })); saveEndlessProgress(); }} onContinue={() => { const nextLevel = generateEndlessLevel(endlessState.floor + 1); setEndlessState(prev => ({ ...prev, floor: endlessState.floor + 1 })); resetGame(nextLevel, { keepProgress: true }); setGamePhase(GamePhase.SELECTION); }} />}
-      {gamePhase === GamePhase.SELECTION && <PlantSelector selectedPlants={deck} onTogglePlant={handlePlantSelect} onStartGame={handleStartLevel} onBack={() => setGamePhase(GamePhase.MENU)} levelConfig={currentLevel} unlockedPlants={currentLevel.id >= 100 || endlessState.active ? Object.keys(PLANT_STATS) as PlantType[] : unlockedPlants} isEndless={endlessState.active} onSaveAndQuit={handleSaveAndQuit} />}
+      {showDLCManager && <DLCManager enabledDLCs={enabledDLCs} onSave={handleSaveDLCs} onClose={() => setShowDLCManager(false)} language={lang} />}
+      {gamePhase === GamePhase.LEVEL_SELECTION && <LevelSelector onSelectLevel={handleLevelSelect} onBack={() => setGamePhase(GamePhase.MENU)} language={lang} />}
+      {gamePhase === GamePhase.LEVEL_EDITOR && <LevelEditor onPlay={handleEditorPlay} onBack={() => setGamePhase(GamePhase.EDITOR_MENU)} language={lang} />}
+      {gamePhase === GamePhase.BASE_EDITOR && <BaseEditor onBack={() => setGamePhase(GamePhase.EDITOR_MENU)} language={lang} />}
+      {gamePhase === GamePhase.ENDLESS_SELECTION && <EndlessModeSelector onBack={() => setGamePhase(GamePhase.MENU)} onStartGame={handleStartEndless} language={lang} />}
+      {gamePhase === GamePhase.ENDLESS_SHOP && <EndlessShop floor={endlessState.floor} score={stateRef.current.score} inventory={endlessState.inventory} onBuy={(type, cost) => { stateRef.current.score -= cost; setEndlessState(prev => ({ ...prev, inventory: { ...prev.inventory, [type]: (prev.inventory[type] || 0) + 1 } })); setUiState(prev => ({ ...prev, score: stateRef.current.score })); saveEndlessProgress(); }} onContinue={() => { const nextLevel = generateEndlessLevel(endlessState.floor + 1); setEndlessState(prev => ({ ...prev, floor: endlessState.floor + 1 })); resetGame(nextLevel, { keepProgress: true }); setGamePhase(GamePhase.SELECTION); }} language={lang} />}
+      {gamePhase === GamePhase.SELECTION && <PlantSelector selectedPlants={deck} onTogglePlant={handlePlantSelect} onStartGame={handleStartLevel} onBack={() => setGamePhase(GamePhase.MENU)} levelConfig={currentLevel} unlockedPlants={currentLevel.id >= 100 || endlessState.active ? Object.keys(PLANT_STATS) as PlantType[] : unlockedPlants} isEndless={endlessState.active} onSaveAndQuit={handleSaveAndQuit} language={lang} />}
       {stateRef.current.activeTextOverlay && (
           <div className="absolute inset-0 z-[1500] flex items-center justify-center pointer-events-none">
               <div className={`px-12 py-6 rounded-xl border-4 backdrop-blur-sm animate-bounce-subtle ${stateRef.current.activeTextOverlay.style === 'WARNING' ? 'bg-red-900/80 border-red-500 text-red-100' : stateRef.current.activeTextOverlay.style === 'SPOOKY' ? 'bg-purple-900/80 border-purple-500 text-purple-100 font-serif italic' : 'bg-blue-900/80 border-blue-500 text-blue-100'}`}>
@@ -962,8 +1117,8 @@ const App: React.FC = () => {
       )}
       {gamePhase === GamePhase.PLAYING && (
           <div className="relative flex items-center justify-center mt-8 w-full h-full">
-            
-            {/* --- NEW PVZ STYLE HUD --- */}
+            {/* Game Render Logic... */}
+            {/* ... rest of the game UI ... */}
             <div className="absolute top-0 left-0 right-0 h-24 z-[100] pointer-events-none flex justify-between px-4 pt-2">
                 {/* SEED BANK (Left) */}
                 <div className="pointer-events-auto bg-[#5d4037] border-4 border-[#3e2712] rounded-br-xl shadow-2xl flex items-center px-3 pb-1 gap-2 relative">
@@ -1020,7 +1175,7 @@ const App: React.FC = () => {
                     onClick={() => setPaused(true)} 
                     className="pointer-events-auto h-10 px-6 bg-[#6a1b9a] hover:bg-[#8e24aa] text-white font-pixel border-b-4 border-[#4a148c] active:border-b-0 active:translate-y-1 rounded shadow-lg transition-all"
                 >
-                    MENU
+                    {t('MENU_BTN', lang)}
                 </button>
             </div>
 
@@ -1038,10 +1193,10 @@ const App: React.FC = () => {
             {isPaused && (
                 <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center backdrop-blur-sm bg-black/60 rounded-xl">
                     <div className="bg-slate-800 border-4 border-slate-600 p-8 rounded-xl flex flex-col gap-4 shadow-2xl min-w-[300px]">
-                        <h2 className="text-3xl text-yellow-400 font-pixel text-center mb-4 drop-shadow-md">PAUSED</h2>
-                        <button onClick={() => setPaused(false)} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-pixel rounded border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all hover:scale-105">RESUME</button>
-                        <button onClick={() => setShowSettings(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-pixel rounded border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all hover:scale-105">SETTINGS</button>
-                        <button onClick={() => { setPaused(false); setGamePhase(GamePhase.MENU); restoreGameState(); }} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-pixel rounded border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition-all hover:scale-105">EXIT TO MENU</button>
+                        <h2 className="text-3xl text-yellow-400 font-pixel text-center mb-4 drop-shadow-md">{t('PAUSED', lang)}</h2>
+                        <button onClick={() => setPaused(false)} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-pixel rounded border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all hover:scale-105">{t('RESUME', lang)}</button>
+                        <button onClick={() => setShowSettings(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-pixel rounded border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all hover:scale-105">{t('SETTINGS', lang)}</button>
+                        <button onClick={() => { setPaused(false); setGamePhase(GamePhase.MENU); restoreGameState(); }} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-pixel rounded border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition-all hover:scale-105">{t('EXIT_TO_MENU', lang)}</button>
                     </div>
                 </div>
             )}
@@ -1070,8 +1225,8 @@ const App: React.FC = () => {
 
           </div>
       )}
-      {uiState.gameOver && ( <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center overflow-hidden"> <div className="absolute inset-0 bg-red-950/80 backdrop-blur-sm z-0"></div> <div className="z-10 flex flex-col items-center animate-fall" style={{'--target-y': '0px'} as React.CSSProperties}> <div className="text-[120px] mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter brightness-75 grayscale contrast-125">🧟‍♂️</div> <h1 className="font-pixel text-7xl text-red-600 mb-2 drop-shadow-[0_4px_0_#000] tracking-widest uppercase animate-pulse">GAME OVER</h1> <div className="flex gap-4 mt-8"> <button onClick={() => { setUiState(prev => ({ ...prev, gameOver: false })); setGamePhase(GamePhase.MENU); }} className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded font-pixel text-xl border-4 border-slate-500 shadow-2xl">MENU</button> <button onClick={() => { setUiState(prev => ({ ...prev, gameOver: false })); resetGame(currentLevel); setGamePhase(GamePhase.SELECTION); }} className="px-12 py-4 bg-slate-800 hover:bg-red-900 text-white rounded font-pixel text-xl border-4 border-slate-600 hover:border-red-500 shadow-2xl transition-all hover:scale-105">TRY AGAIN</button> </div> </div> </div> )}
-      {uiState.victory && ( <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center overflow-hidden"> <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/90 to-green-800/90 backdrop-blur-md z-0"></div> <div className="z-10 flex flex-col items-center"> <div className="text-[150px] mb-4 drop-shadow-[0_0_50px_rgba(253,224,71,0.6)] animate-bounce-subtle">🏆</div> <h1 className="font-pixel text-6xl text-yellow-300 mb-4 drop-shadow-[0_4px_0_rgba(161,98,7,1)] tracking-wider">LEVEL CLEAR!</h1> {endlessState.active ? ( <div className="flex flex-col items-center"> <div className="text-2xl text-white font-pixel mb-4">FLOOR {endlessState.floor} COMPLETE</div> <button onClick={handleEndlessVictory} className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-pixel text-xl shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1"> NEXT FLOOR </button> </div> ) : ( <> {currentLevel.unlocksPlant && ( <div className="bg-slate-800/80 p-6 rounded-lg border-2 border-yellow-500 flex flex-col items-center mb-6 animate-pulse"> <div className="text-yellow-400 font-pixel text-sm mb-2">NEW PLANT UNLOCKED!</div> <div className="text-6xl mb-2 filter drop-shadow-[0_0_15px_rgba(255,255,0,0.5)]"> {PLANT_STATS[currentLevel.unlocksPlant].icon} </div> <div className="text-white font-bold">{PLANT_STATS[currentLevel.unlocksPlant].name}</div> </div> )} <div className="flex gap-4 mt-4"> <button onClick={() => { setUiState(prev => ({ ...prev, victory: false })); setGamePhase(GamePhase.MENU); restoreGameState(); }} className="px-10 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-pixel text-xl shadow-[0_5px_0_rgb(51,65,85)] active:shadow-none active:translate-y-[5px] transition-all border-2 border-slate-500">MAIN MENU</button> </div> </> )} </div> </div> )}
+      {uiState.gameOver && ( <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center overflow-hidden"> <div className="absolute inset-0 bg-red-950/80 backdrop-blur-sm z-0"></div> <div className="z-10 flex flex-col items-center animate-fall" style={{'--target-y': '0px'} as React.CSSProperties}> <div className="text-[120px] mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter brightness-75 grayscale contrast-125">🧟‍♂️</div> <h1 className="font-pixel text-7xl text-red-600 mb-2 drop-shadow-[0_4px_0_#000] tracking-widest uppercase animate-pulse">{t('GAME_OVER', lang)}</h1> <div className="flex gap-4 mt-8"> <button onClick={() => { setUiState(prev => ({ ...prev, gameOver: false })); setGamePhase(GamePhase.MENU); }} className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded font-pixel text-xl border-4 border-slate-500 shadow-2xl">{t('MAIN_MENU', lang)}</button> <button onClick={() => { setUiState(prev => ({ ...prev, gameOver: false })); resetGame(currentLevel); setGamePhase(GamePhase.SELECTION); }} className="px-12 py-4 bg-slate-800 hover:bg-red-900 text-white rounded font-pixel text-xl border-4 border-slate-600 hover:border-red-500 shadow-2xl transition-all hover:scale-105">{t('TRY_AGAIN', lang)}</button> </div> </div> </div> )}
+      {uiState.victory && ( <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center overflow-hidden"> <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/90 to-green-800/90 backdrop-blur-md z-0"></div> <div className="z-10 flex flex-col items-center"> <div className="text-[150px] mb-4 drop-shadow-[0_0_50px_rgba(253,224,71,0.6)] animate-bounce-subtle">🏆</div> <h1 className="font-pixel text-6xl text-yellow-300 mb-4 drop-shadow-[0_4px_0_rgba(161,98,7,1)] tracking-wider">{t('LEVEL_CLEAR', lang)}</h1> {endlessState.active ? ( <div className="flex flex-col items-center"> <div className="text-2xl text-white font-pixel mb-4">{t('FLOOR_COMPLETE', lang)} {endlessState.floor}</div> <button onClick={handleEndlessVictory} className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-pixel text-xl shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1"> {t('NEXT_FLOOR', lang)} </button> </div> ) : ( <> {currentLevel.unlocksPlant && ( <div className="bg-slate-800/80 p-6 rounded-lg border-2 border-yellow-500 flex flex-col items-center mb-6 animate-pulse"> <div className="text-yellow-400 font-pixel text-sm mb-2">{t('NEW_PLANT_UNLOCKED', lang)}</div> <div className="text-6xl mb-2 filter drop-shadow-[0_0_15px_rgba(255,255,0,0.5)]"> {PLANT_STATS[currentLevel.unlocksPlant].icon} </div> <div className="text-white font-bold">{PLANT_STATS[currentLevel.unlocksPlant].name}</div> </div> )} <div className="flex gap-4 mt-4"> <button onClick={() => { setUiState(prev => ({ ...prev, victory: false })); setGamePhase(GamePhase.MENU); restoreGameState(); }} className="px-10 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-pixel text-xl shadow-[0_5px_0_rgb(51,65,85)] active:shadow-none active:translate-y-[5px] transition-all border-2 border-slate-500">{t('MAIN_MENU', lang)}</button> </div> </> )} </div> </div> )}
       
       </div>
     </div>

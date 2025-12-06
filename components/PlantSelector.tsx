@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { PlantType, LevelConfig, LevelScene, AnimationState } from '../types';
 import { PLANT_STATS, ZOMBIE_STATS, MAX_DECK_SIZE } from '../constants';
+import { t, tEntity, Lang } from '../i18n';
 
 interface PlantSelectorProps {
   selectedPlants: PlantType[];
@@ -11,20 +13,10 @@ interface PlantSelectorProps {
   unlockedPlants: PlantType[]; // PASSED FROM APP
   isEndless?: boolean; // New Prop
   onSaveAndQuit?: () => void; // New Prop
+  language: Lang;
 }
 
-const getSceneName = (scene: LevelScene) => {
-    switch(scene) {
-        case LevelScene.LAWN_DAY: return "DAYTIME LAWN";
-        case LevelScene.LAWN_NIGHT: return "NIGHT LAWN";
-        case LevelScene.BALCONY: return "ROOF BALCONY";
-        case LevelScene.FACTORY: return "FACTORY";
-        case LevelScene.GRAVEYARD: return "GRAVEYARD";
-        default: return "UNKNOWN";
-    }
-}
-
-export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, onTogglePlant, onStartGame, onBack, levelConfig, unlockedPlants, isEndless, onSaveAndQuit }) => {
+export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, onTogglePlant, onStartGame, onBack, levelConfig, unlockedPlants, isEndless, onSaveAndQuit, language }) => {
   const allPlants = Object.values(PLANT_STATS);
   const maxSeeds = levelConfig.seedSlots || MAX_DECK_SIZE;
 
@@ -39,12 +31,12 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
         <div className="flex justify-between items-center shrink-0">
              <div className="flex items-center gap-4">
                  <button onClick={onBack} className="bg-slate-700 hover:bg-slate-600 text-white font-pixel px-4 py-2 rounded border-2 border-slate-500 shadow-md transition-transform hover:scale-105 active:scale-95">
-                     &lt; BACK
+                     &lt; {t('BACK', language)}
                  </button>
-                 <h2 className="text-3xl text-yellow-100 font-pixel drop-shadow-md">CHOOSE YOUR SEEDS</h2>
+                 <h2 className="text-3xl text-yellow-100 font-pixel drop-shadow-md">{t('CHOOSE_SEEDS', language)}</h2>
              </div>
              <div className="text-right">
-                 <div className="text-yellow-400 font-pixel text-xs mb-1">SELECTED</div>
+                 <div className="text-yellow-400 font-pixel text-xs mb-1">{t('SELECTED', language)}</div>
                  <div className={`text-xl font-bold font-pixel ${selectedPlants.length === maxSeeds ? 'text-red-400' : 'text-green-400'}`}>
                    {selectedPlants.length} / {maxSeeds}
                  </div>
@@ -110,6 +102,7 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
                                 )}
                             </>
                          )}
+                         {/* Optional Name Tooltip Logic Could Go Here */}
                       </div>
                     );
                   })}
@@ -119,13 +112,13 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
             {/* Right: Level Info */}
             <div className="w-64 bg-slate-900/80 rounded-lg border-2 border-slate-600 p-4 flex flex-col shrink-0">
                 <div className="text-center border-b border-slate-700 pb-2 mb-4">
-                    <h3 className="text-blue-300 font-pixel text-sm">LEVEL INFO</h3>
+                    <h3 className="text-blue-300 font-pixel text-sm">{t('LEVEL_INFO', language)}</h3>
                     <div className="text-white font-bold text-lg mt-1">{levelConfig.name}</div>
-                    <div className="text-slate-400 text-xs font-mono mt-1">{getSceneName(levelConfig.scene)}</div>
+                    <div className="text-slate-400 text-xs font-mono mt-1">{t(levelConfig.scene, language)}</div>
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
-                    <h4 className="text-red-400 font-pixel text-xs mb-2 text-center">ZOMBIES</h4>
+                    <h4 className="text-red-400 font-pixel text-xs mb-2 text-center">{t('ZOMBIES_DETECTED', language)}</h4>
                     <div className="flex-1 overflow-y-auto pr-1">
                         <div className="grid grid-cols-2 gap-2">
                              {levelZombies.map(zId => {
@@ -138,7 +131,7 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
                                  const frame = idleAnim?.frames?.[0];
                                  
                                  return (
-                                     <div key={zId} className="bg-slate-800 border border-slate-700 rounded p-2 flex flex-col items-center justify-center hover:bg-slate-700 transition-colors" title={zId}>
+                                     <div key={zId} className="bg-slate-800 border border-slate-700 rounded p-2 flex flex-col items-center justify-center hover:bg-slate-700 transition-colors" title={tEntity(zId, zId, language)}>
                                          <div className="w-12 h-12 flex items-center justify-center mb-1 overflow-hidden">
                                              {frame ? (
                                                  <img src={frame} className="w-full h-full object-contain image-pixelated" alt={zId} />
@@ -163,7 +156,7 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
                         onClick={onSaveAndQuit} 
                         className="mt-4 w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded font-pixel text-xs shadow-lg border-b-4 border-purple-800 active:border-b-0 active:translate-y-1"
                      >
-                        💾 SAVE & QUIT
+                        💾 {t('SAVE_QUIT', language)}
                      </button>
                 )}
             </div>
@@ -181,7 +174,7 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
               }
             `}
           >
-            LET'S ROCK!
+            {t('LETS_ROCK', language)}
           </button>
         </div>
 

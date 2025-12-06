@@ -1,6 +1,6 @@
 
 
-import { PlantConfig, BasePlantType, BaseZombieType, LevelConfig, PlantType, ZombieType, LevelScene, ZombieStatConfig, EntityVisuals, AttackDirection, ConsumableType, ProjectileType } from './types';
+import { PlantConfig, BasePlantType, BaseZombieType, LevelConfig, PlantType, ZombieType, LevelScene, ZombieStatConfig, EntityVisuals, AttackDirection, ConsumableType, ProjectileType, TrajectoryType } from './types';
 
 export const ROWS = 5;
 export const COLS = 9;
@@ -590,7 +590,9 @@ const ART_KERNEL_PULT = [
 ..bb.....g.g.g..`
 ];
 
-const ART_COB_CANNON = [
+// --- COB CANNON VISUALS ---
+
+const ART_COB_CANNON_IDLE = [
 `...YYYYYYYYYY...
 ..YYYYYYYYYYYY..
 .YYYYYYYYYYYYYY.
@@ -611,6 +613,112 @@ const ART_COB_CANNON = [
 ...YYYYYYYYYY...
 ....g..gg..g....
 ...g.g.gg.g.g...`
+];
+
+const ART_COB_CANNON_ATTACK = [
+`................
+...YYYYYYYYYY...
+..YYYYYYYYYYYY..
+.YYYYYYYYYYYYYY.
+.YYbbbbbbbbbbYY.
+.YYbbbbbbbbbbYY.
+.YYYYYYYYYYYYYY.
+..YYYYYYYYYYYY..
+...YYYYYYYYYY...
+....g..gg..g....`,
+`................
+................
+................
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+...bbbbbbbbbb...
+....g..gg..g....
+...g.g.gg.g.g...`,
+`................
+................
+................
+................
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+...bbbbbbbbbb...
+....g..gg..g....`,
+`................
+................
+................
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+..bbbbbbbbbbbb..
+...bbbbbbbbbb...
+....g..gg..g....
+...g.g.gg.g.g...`
+];
+
+const ART_COB_PROJECTILE = [
+`.....YYY........
+....YYYYY.......
+....YYYYY.......
+....YYYYY.......
+....YYYYY.......
+....YYYYY.......
+....YYYYY.......
+....YYYYY.......
+....YYYYY.......
+.....YYY........`,
+`......YYY.......
+.....YYYYY......
+....YYYYY.......
+...YYYYY........
+...YYYYY........
+..YYYYY.........
+..YYYYY.........
+.YYYYY..........
+.YYYYY..........
+.YYY............`,
+`.........YYY....
+........YYYYY...
+.......YYYYY....
+......YYYYY.....
+.....YYYYY......
+....YYYYY.......
+...YYYYY........
+..YYYYY.........
+.YYYYY..........
+YYY.............`,
+`................
+................
+.YYYYYYYYYYYYYY.
+YYYYYYYYYYYYYYYY
+YYYYYYYYYYYYYYYY
+.YYYYYYYYYYYYYY.
+................
+................
+................
+................`,
+`YYY.............
+.YYYYY..........
+..YYYYY.........
+...YYYYY........
+....YYYYY.......
+.....YYYYY......
+......YYYYY.....
+.......YYYYY....
+........YYYYY...
+.........YYY....`,
+`.YYY............
+.YYYYY..........
+.YYYYY..........
+..YYYYY.........
+..YYYYY.........
+...YYYYY........
+...YYYYY........
+....YYYYY.......
+.....YYYYY......
+......YYYYY.....`
 ];
 
 const ART_STARFRUIT = [
@@ -1025,7 +1133,7 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
       type: BasePlantType.PEASHOOTER, name: 'Peashooter', cost: 100, cooldown: 5000, health: 300, icon: '🌱', description: 'Shoots peas',
       visuals: createVisuals(ART_PEASHOOTER, undefined, 3),
       abilities: [
-          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.NORMAL, range: 10 }
+          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.NORMAL, range: 10, trajectory: TrajectoryType.STRAIGHT }
       ]
   },
   [BasePlantType.WALLNUT]: { 
@@ -1052,7 +1160,7 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
       type: BasePlantType.SNOW_PEA, name: 'Snow Pea', cost: 175, cooldown: 5000, health: 300, icon: '❄️', description: 'Shoots frozen peas',
       visuals: createVisuals(ART_SNOW_PEA, undefined, 3),
       abilities: [
-          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.FROZEN }
+          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.FROZEN, trajectory: TrajectoryType.STRAIGHT }
       ]
   },
   [BasePlantType.CHOMPER]: {
@@ -1064,14 +1172,14 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
       type: BasePlantType.REPEATER, name: 'Repeater', cost: 200, cooldown: 5000, health: 300, icon: '🌱', description: 'Shoots 2 peas',
       visuals: createVisuals(ART_REPEATER, undefined, 3),
       abilities: [
-          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.NORMAL, shotsPerTrigger: 2, multiShotDelay: 150 }
+          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.NORMAL, shotsPerTrigger: 2, multiShotDelay: 150, trajectory: TrajectoryType.STRAIGHT }
       ]
   },
   [BasePlantType.PUFF_SHROOM]: {
       type: BasePlantType.PUFF_SHROOM, name: 'Puff Shroom', cost: 0, cooldown: 5000, health: 100, icon: '🍄', description: 'Short range shooter',
       visuals: createVisuals(ART_PUFF_SHROOM, undefined, 2),
       abilities: [
-          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.NORMAL, range: 4 }
+          { type: 'SHOOT', interval: 1400, damage: 20, projectileType: ProjectileType.NORMAL, range: 4, trajectory: TrajectoryType.STRAIGHT }
       ]
   },
   [BasePlantType.SUN_SHROOM]: {
@@ -1082,7 +1190,7 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
   [BasePlantType.FUME_SHROOM]: {
       type: BasePlantType.FUME_SHROOM, name: 'Fume Shroom', cost: 75, cooldown: 5000, health: 300, icon: '💨', description: 'Shoots through screen door',
       visuals: createVisuals(ART_FUME_SHROOM, undefined, 3),
-      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20 } ]
+      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, trajectory: TrajectoryType.STRAIGHT } ]
   },
   [BasePlantType.GRAVE_BUSTER]: {
       type: BasePlantType.GRAVE_BUSTER, name: 'Grave Buster', cost: 75, cooldown: 5000, health: 300, icon: '🪦', description: 'Eats graves',
@@ -1095,7 +1203,7 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
   [BasePlantType.SCAREDY_SHROOM]: {
       type: BasePlantType.SCAREDY_SHROOM, name: 'Scaredy Shroom', cost: 25, cooldown: 5000, health: 100, icon: '😨', description: 'Long range, hides when close',
       visuals: createVisuals(ART_SCAREDY_SHROOM, undefined, 2),
-      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, range: 10 } ]
+      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, range: 10, trajectory: TrajectoryType.STRAIGHT } ]
   },
   [BasePlantType.ICE_SHROOM]: {
       type: BasePlantType.ICE_SHROOM, name: 'Ice Shroom', cost: 75, cooldown: 50000, health: 100, icon: '🧊', description: 'Freezes all zombies',
@@ -1130,12 +1238,12 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
   [BasePlantType.MELON_PULT]: {
       type: BasePlantType.MELON_PULT, name: 'Melon-pult', cost: 300, cooldown: 5000, health: 300, icon: '🍉', description: 'Heavy damage',
       visuals: createVisuals(ART_MELON_PULT, undefined, 3),
-      abilities: [ { type: 'SHOOT', interval: 2800, damage: 80, projectileType: ProjectileType.MELON } ]
+      abilities: [ { type: 'SHOOT', interval: 2800, damage: 80, projectileType: ProjectileType.MELON, trajectory: TrajectoryType.PARABOLIC, arcHeight: 80, flightDuration: 1000 } ]
   },
   [BasePlantType.KERNEL_PULT]: {
       type: BasePlantType.KERNEL_PULT, name: 'Kernel-pult', cost: 100, cooldown: 5000, health: 300, icon: '🌽', description: 'Shoots corn and butter',
       visuals: createVisuals(ART_KERNEL_PULT, undefined, 3),
-      abilities: [ { type: 'SHOOT', interval: 2800, damage: 20, projectileType: ProjectileType.KERNEL } ]
+      abilities: [ { type: 'SHOOT', interval: 2800, damage: 20, projectileType: ProjectileType.KERNEL, trajectory: TrajectoryType.PARABOLIC, arcHeight: 60, flightDuration: 1000 } ]
   },
   [BasePlantType.TWIN_SUNFLOWER]: {
       type: BasePlantType.TWIN_SUNFLOWER, name: 'Twin Sunflower', cost: 150, cooldown: 5000, health: 300, icon: '🌻', description: 'Double sun production',
@@ -1145,22 +1253,36 @@ export const INITIAL_PLANT_STATS: Record<string, PlantConfig> = {
   [BasePlantType.THREEPEATER]: {
       type: BasePlantType.THREEPEATER, name: 'Threepeater', cost: 325, cooldown: 5000, health: 300, icon: '🌱', description: 'Shoots 3 lanes',
       visuals: createVisuals(ART_THREEPEATER, undefined, 3),
-      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20 } ]
+      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, trajectory: TrajectoryType.STRAIGHT } ]
   },
   [BasePlantType.GATLING_PEA]: {
       type: BasePlantType.GATLING_PEA, name: 'Gatling Pea', cost: 250, cooldown: 5000, health: 300, icon: '🔫', description: 'Shoots 4 peas',
       visuals: createVisuals(ART_GATLING_PEA, undefined, 4),
-      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, shotsPerTrigger: 4, multiShotDelay: 100 } ]
+      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, shotsPerTrigger: 4, multiShotDelay: 100, trajectory: TrajectoryType.STRAIGHT } ]
   },
   [BasePlantType.COB_CANNON]: {
       type: BasePlantType.COB_CANNON, name: 'Cob Cannon', cost: 500, cooldown: 30000, health: 500, icon: '🌽', description: 'Massive manual strike',
-      visuals: createVisuals(ART_COB_CANNON, undefined, 2),
-      visualScale: 1.5
+      visuals: createVisuals(ART_COB_CANNON_IDLE, ART_COB_CANNON_ATTACK, 4),
+      visualScale: 1.5,
+      abilities: [
+          { 
+            type: 'SHOOT', 
+            interval: 2000, // Frequent check, but gating logic in App.tsx relies on cooldown/isReady
+            projectileType: ProjectileType.COB,
+            trajectory: TrajectoryType.LOBBED,
+            arcHeight: 250, // Very high arc
+            flightDuration: 2000, // Slow travel time
+            // Attach specific visuals to the projectile itself
+            projectileVisuals: { 
+                idle: { frames: ART_COB_PROJECTILE.map(generatePixelArt), fps: 12 } 
+            }
+          }
+      ]
   },
   [BasePlantType.STARFRUIT]: {
       type: BasePlantType.STARFRUIT, name: 'Starfruit', cost: 125, cooldown: 5000, health: 300, icon: '⭐', description: 'Shoots 5 directions',
       visuals: createVisuals(ART_STARFRUIT, undefined, 3),
-      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20 } ]
+      abilities: [ { type: 'SHOOT', interval: 1400, damage: 20, trajectory: TrajectoryType.STRAIGHT } ]
   }
 };
 

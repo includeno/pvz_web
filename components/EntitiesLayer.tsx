@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { GameState, ZombieType, ProjectileType, Zombie, AnimationState, BaseZombieType, Projectile } from '../types';
 import { ZOMBIE_STATS, COLS } from '../constants';
@@ -138,15 +139,29 @@ const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, ti
         if (anim && anim.frames && anim.frames.length > 0) {
              const fps = anim.fps || 10;
              const frameIndex = Math.floor(time / (1000/fps)) % anim.frames.length;
-             const rotation = proj.vector ? Math.atan2(proj.vector.y, proj.vector.x) * (180/Math.PI) : 0;
+             let rotation = 0;
+             
+             // Dynamic rotation for parabolic/vector movement
+             if (proj.vector) {
+                 rotation = Math.atan2(proj.vector.y, proj.vector.x) * (180/Math.PI);
+             } else if (proj.verticalOffset) {
+                 // Approximate rotation for parabolic arcs
+                 // We don't have current velocity vector easily available without calculating it
+                 // but we can fake it or just rotate based on progress?
+                 // For now, let it spin or stay flat unless it's a specific art style
+                 if (proj.type === ProjectileType.COB) {
+                     // Cob rotates slowly in air
+                     rotation = (time / 10) % 360; 
+                 }
+             }
              
              return (
                  <div
-                    className="absolute z-20"
+                    className="absolute z-[200]"
                     style={{
                       left: `${(proj.position.x || 0) * 100}%`,
                       top: `${(proj.row * 20) + 6}%`,
-                      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+                      transform: `translate(-50%, -50%) translateY(${proj.verticalOffset || 0}px) rotate(${rotation}deg)`,
                       width: '40px', height: '40px'
                     }}
                  >
@@ -161,9 +176,9 @@ const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, ti
     let styleClass = '';
     if (proj.type === ProjectileType.FROZEN) { content = '🔵'; styleClass = 'filter hue-rotate-180 brightness-150'; }
     else if (proj.type === ProjectileType.FIRE) { content = '🔥'; styleClass = 'scale-125 drop-shadow-[0_0_2px_rgba(239,68,68,0.8)]'; }
-    else if (proj.type === ProjectileType.MELON) { content = '🍉'; styleClass = 'scale-150 drop-shadow-md'; }
-    else if (proj.type === ProjectileType.KERNEL) { content = '🌽'; styleClass = 'scale-75'; }
-    else if (proj.type === ProjectileType.BUTTER) { content = '🧈'; styleClass = 'scale-110 drop-shadow-sm'; }
+    else if (proj.type === ProjectileType.MELON) { content = '🍉'; styleClass = 'scale-150 drop-shadow-md animate-spin-slow'; }
+    else if (proj.type === ProjectileType.KERNEL) { content = '🌽'; styleClass = 'scale-75 animate-spin-slow'; }
+    else if (proj.type === ProjectileType.BUTTER) { content = '🧈'; styleClass = 'scale-110 drop-shadow-sm animate-spin-slow'; }
     else if (proj.type === ProjectileType.COB) { content = '🌽'; styleClass = 'scale-[2.5] drop-shadow-xl z-50 animate-spin-slow'; }
     else if (proj.type === ProjectileType.STAR) { content = '⭐'; styleClass = 'scale-100 drop-shadow-md animate-spin z-50'; }
 
@@ -173,7 +188,7 @@ const ProjectileView: React.FC<{ proj: Projectile; time: number }> = ({ proj, ti
         style={{
           left: `${(proj.position.x || 0) * 100}%`,
           top: `${(proj.row * 20) + 6}%`,
-          transform: 'translate(-50%, -50%)',
+          transform: `translate(-50%, -50%) translateY(${proj.verticalOffset || 0}px)`,
         }}
       >
         {content}

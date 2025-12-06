@@ -1,5 +1,4 @@
 
-
 export enum GamePhase {
   MENU = 'MENU',
   LEVEL_SELECTION = 'LEVEL_SELECTION',
@@ -19,6 +18,7 @@ export interface AppSettings {
   musicVolume: number;
   sfxVolume: number;
   gameSpeed: number;
+  language: 'en' | 'zh';
 }
 
 // Allow string expansion for Modded Plants
@@ -89,6 +89,12 @@ export enum ProjectileType {
   STAR = 'STAR' // Starfruit projectile
 }
 
+export enum TrajectoryType {
+  STRAIGHT = 'STRAIGHT',
+  PARABOLIC = 'PARABOLIC', // Melon-pult style
+  LOBBED = 'LOBBED'       // Cob Cannon style (High arc)
+}
+
 export interface Position {
   row: number;
   col: number;
@@ -152,12 +158,21 @@ export interface Projectile extends Entity {
   damage: number;
   speed: number;
   row: number;
-  // For targeted projectiles (Cob Cannon)
-  targetRow?: number;
-  targetCol?: number;
-  initialY?: number;
-  elapsedTime?: number;
-  // For directional projectiles
+  
+  // Trajectory System
+  trajectory: TrajectoryType;
+  startX?: number; // X Coordinate 0.0 - 9.0
+  startRow?: number;
+  destX?: number; // Target X
+  destRow?: number; // Target Row
+  
+  startTime?: number;
+  flightDuration?: number; // ms to reach target
+  arcHeight?: number; // Visual offset max height (percentage of row height or pixels)
+  
+  verticalOffset?: number; // Current calculated visual offset (negative Y)
+  
+  // For straight directional projectiles
   vector?: { x: number, y: number };
   
   // Customization
@@ -231,8 +246,21 @@ export interface PlantAbilityConfig {
     projectileVisuals?: EntityVisuals; // Custom visuals for the bullet
     multiShotDelay?: number; // For repeaters (e.g. 150ms)
     shotsPerTrigger?: number; // How many shots (e.g. 2 for repeater)
+    
+    // Trajectory Params
+    trajectory?: TrajectoryType;
+    arcHeight?: number; // Height of arc in % of cell height approx (e.g., 200 = 2 cells high)
+    flightDuration?: number; // Fixed flight time in ms (for lobbed shots)
+
     // Explode/Squash params
     triggerRange?: number;
+}
+
+export interface EntityTranslations {
+    [lang: string]: {
+        name?: string;
+        description?: string;
+    }
 }
 
 export interface PlantConfig {
@@ -247,6 +275,7 @@ export interface PlantConfig {
   visualScale?: number;
   attackDirections?: AttackDirection[]; // If present, plant shoots in these directions without aiming check
   abilities?: PlantAbilityConfig[]; // Dynamic abilities
+  translations?: EntityTranslations;
 }
 
 // --- ZOMBIE ABILITY SYSTEM ---
@@ -278,6 +307,7 @@ export interface ZombieStatConfig {
   visuals?: EntityVisuals; 
   visualScale?: number;
   abilities?: AbilityConfig[]; // Dynamic abilities
+  translations?: EntityTranslations;
 }
 
 // --- NEW LEVEL SYSTEM ---

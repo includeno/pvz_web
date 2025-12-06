@@ -1,12 +1,15 @@
+
 import React, { useState } from 'react';
 import { LevelConfig, ZombieType, BaseZombieType, PlantConfig, ZombieStatConfig, DLCManifest, LevelScene, WaveDefinition, ScriptedEvent, EntityVisuals, BasePlantType, AnimationState, AttackDirection, AbilityConfig, ZombieAbilityType, PlantAbilityType, ProjectileType } from '../types';
 import { ZOMBIE_STATS, PLANT_STATS, DIRECTION_VECTORS } from '../constants';
 import { PixelEditor } from './PixelEditor';
 import { AVAILABLE_DLCS } from '../dlc';
+import { t, Lang, tEntity } from '../i18n';
 
 interface LevelEditorProps {
   onPlay: (level: LevelConfig, tempDLC: DLCManifest) => void;
   onBack: () => void;
+  language: Lang;
 }
 
 // Main Tabs
@@ -14,7 +17,7 @@ type MainTab = 'DLC_INFO' | 'LEVELS' | 'PLANTS' | 'ZOMBIES' | 'EXPORT';
 // Sub Tabs for Level Editor
 type LevelSubTab = 'SETTINGS' | 'WAVES' | 'EVENTS';
 
-export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
+export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack, language }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('LEVELS');
   const [levelSubTab, setLevelSubTab] = useState<LevelSubTab>('SETTINGS');
   
@@ -92,7 +95,7 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
       if (!newPlant.type) return;
       const plantType = newPlant.type.toUpperCase();
       setDlcData(prev => ({ ...prev, plants: [...(prev.plants || []), { ...newPlant, type: plantType }] }));
-      alert(`Added Plant: ${newPlant.name}`);
+      alert(`${t('ADDED_PLANTS', language)}: ${newPlant.name}`);
       // Reset visuals for next, but keep some base config
       setNewPlant(p => ({ ...p, type: 'NEW_PLANT_' + Math.floor(Math.random()*100), visuals: undefined, abilities: [] }));
   };
@@ -101,7 +104,7 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
       if (!newZombie.id) return;
       const id = newZombie.id.toUpperCase();
       setDlcData(prev => ({ ...prev, zombies: { ...prev.zombies, [id]: newZombie.stats } }));
-      alert(`Added Zombie: ${id}`);
+      alert(`${t('ADDED_ZOMBIES', language)}: ${id}`);
       // Reset visuals
       setNewZombie(z => ({ ...z, id: 'NEW_ZOMBIE_' + Math.floor(Math.random()*100), stats: { ...z.stats, visuals: undefined, visualScale: 1.0, abilities: [] } }));
   };
@@ -207,60 +210,6 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
       }));
   };
 
-  const loadBasePlant = (baseType: string) => {
-      const base = PLANT_STATS[baseType];
-      if (!base) return;
-      setNewPlant({
-          ...base,
-          type: baseType, // Keep same ID to override, or user can change it
-          visuals: base.visuals ? JSON.parse(JSON.stringify(base.visuals)) : undefined
-      });
-  };
-
-  const loadDlcPlant = (value: string) => {
-      if (!value) return;
-      const [dlcId, plantType] = value.split(':');
-      const dlc = AVAILABLE_DLCS.find(d => d.id === dlcId);
-      const plant = dlc?.plants?.find(p => p.type === plantType);
-      
-      if (plant) {
-          // Deep Clone to avoid reference
-          const clone: PlantConfig = JSON.parse(JSON.stringify(plant));
-          setNewPlant({
-              ...clone,
-              type: clone.type + '_COPY' // Suggest a new ID
-          });
-      }
-  };
-
-  const loadBaseZombie = (baseType: string) => {
-      const base = ZOMBIE_STATS[baseType];
-      if (!base) return;
-      setNewZombie({
-          id: baseType,
-          stats: {
-              ...base,
-              visuals: base.visuals ? JSON.parse(JSON.stringify(base.visuals)) : undefined
-          }
-      });
-  };
-
-  const loadDlcZombie = (value: string) => {
-      if (!value) return;
-      const [dlcId, zombieId] = value.split(':');
-      const dlc = AVAILABLE_DLCS.find(d => d.id === dlcId);
-      const stats = dlc?.zombies?.[zombieId];
-      
-      if (stats) {
-          // Deep Clone
-          const clone: ZombieStatConfig = JSON.parse(JSON.stringify(stats));
-          setNewZombie({
-              id: zombieId + '_COPY',
-              stats: clone
-          });
-      }
-  };
-
   const generateExportCode = () => {
       const exportData = { ...dlcData, levels: [levelConfig, ...(dlcData.levels || [])] };
       const varName = dlcData.id.replace(/[^a-zA-Z0-9]/g, '') + 'DLC';
@@ -286,8 +235,6 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
       return undefined;
   };
 
-  const availableZombies = Array.from(new Set([...Object.keys(ZOMBIE_STATS), ...(dlcData.zombies ? Object.keys(dlcData.zombies) : [])]));
-
   return (
     <div className="absolute inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-4">
        
@@ -298,6 +245,7 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                entityName={editingTarget === 'PLANT' ? newPlant.name : editingTarget === 'ZOMBIE' ? newZombie.id : `Bullet`}
                initialVisuals={getInitialVisualsForEditor()}
                hideActionMenu={editingTarget === 'PLANT' || editingTarget === 'BULLET'}
+               language={language}
            />
        )}
 
@@ -305,13 +253,13 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
           
           {/* Top Navigation */}
           <div className="flex justify-between items-center mb-4 border-b border-slate-600 pb-2">
-             <h2 className="text-2xl text-blue-400 font-pixel drop-shadow-md mr-8">DLC CREATOR</h2>
+             <h2 className="text-2xl text-blue-400 font-pixel drop-shadow-md mr-8">{t('DLC_CREATOR', language)}</h2>
              <div className="flex gap-1 flex-1">
                  {(['DLC_INFO', 'LEVELS', 'PLANTS', 'ZOMBIES', 'EXPORT'] as MainTab[]).map(tab => (
                      <button key={tab} onClick={() => setActiveTab(tab)} 
                         className={`px-6 py-3 font-pixel text-xs rounded-t-lg transition-colors 
                         ${activeTab === tab ? 'bg-slate-600 text-white border-t-4 border-blue-500' : 'bg-slate-700 text-slate-400 hover:bg-slate-650'}`}>
-                         {tab.replace('_', ' ')}
+                         {t(tab, language)}
                      </button>
                  ))}
              </div>
@@ -323,18 +271,18 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
              {/* === TAB: DLC INFO === */}
              {activeTab === 'DLC_INFO' && (
                  <div className="p-8 max-w-2xl mx-auto w-full bg-slate-900/50 rounded border border-slate-700">
-                     <h3 className="text-blue-400 font-pixel mb-6">DLC METADATA</h3>
+                     <h3 className="text-blue-400 font-pixel mb-6">{t('DLC_METADATA', language)}</h3>
                      <div className="space-y-4">
                          <div>
-                             <label className="block text-slate-400 text-xs font-pixel mb-1">DLC ID (Unique Variable Name)</label>
+                             <label className="block text-slate-400 text-xs font-pixel mb-1">{t('DLC_ID', language)}</label>
                              <input type="text" value={dlcData.id} onChange={e => setDlcData({...dlcData, id: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono"/>
                          </div>
                          <div>
-                             <label className="block text-slate-400 text-xs font-pixel mb-1">DISPLAY NAME</label>
+                             <label className="block text-slate-400 text-xs font-pixel mb-1">{t('DISPLAY_NAME', language)}</label>
                              <input type="text" value={dlcData.name} onChange={e => setDlcData({...dlcData, name: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"/>
                          </div>
                          <div>
-                             <label className="block text-slate-400 text-xs font-pixel mb-1">VERSION</label>
+                             <label className="block text-slate-400 text-xs font-pixel mb-1">{t('VERSION', language)}</label>
                              <input type="text" value={dlcData.version} onChange={e => setDlcData({...dlcData, version: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"/>
                          </div>
                      </div>
@@ -349,11 +297,11 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                          {(['SETTINGS', 'WAVES', 'EVENTS'] as LevelSubTab[]).map(subTab => (
                              <button key={subTab} onClick={() => setLevelSubTab(subTab)}
                                 className={`px-4 py-2 text-xs font-bold transition-colors ${levelSubTab === subTab ? 'text-yellow-400 border-b-2 border-yellow-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                                 {subTab}
+                                 {t(subTab, language)}
                              </button>
                          ))}
                          <div className="flex-1" />
-                         <button onClick={() => onPlay(levelConfig, dlcData)} className="px-4 py-1 bg-green-600 hover:bg-green-500 text-white text-xs font-pixel rounded mb-1">TEST PLAY</button>
+                         <button onClick={() => onPlay(levelConfig, dlcData)} className="px-4 py-1 bg-green-600 hover:bg-green-500 text-white text-xs font-pixel rounded mb-1">{t('TEST_PLAY', language)}</button>
                      </div>
                      <div className="flex-1 overflow-hidden">
                          {levelSubTab === 'SETTINGS' && (
@@ -364,9 +312,9 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                                         <input type="text" value={levelConfig.name} onChange={e => setLevelConfig({...levelConfig, name: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-bold text-lg" placeholder="Level Name"/>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-slate-400 text-xs font-pixel mb-1">SCENE</label>
+                                                <label className="block text-slate-400 text-xs font-pixel mb-1">{t('LEVEL_INFO', language)} Scene</label>
                                                 <select value={levelConfig.scene} onChange={e => setLevelConfig({...levelConfig, scene: e.target.value as LevelScene})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white">
-                                                    {Object.values(LevelScene).map(s => <option key={s} value={s}>{s}</option>)}
+                                                    {Object.values(LevelScene).map(s => <option key={s} value={s}>{t(s, language)}</option>)}
                                                 </select>
                                             </div>
                                             <div>
@@ -374,7 +322,6 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                                                 <input type="number" value={levelConfig.startingSun} onChange={e => setLevelConfig({...levelConfig, startingSun: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
                                             </div>
                                         </div>
-                                        {/* ... [Rest of Settings form] ... */}
                                     </div>
                                 </div>
                              </div>
@@ -393,32 +340,32 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                         
                          <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-slate-400 text-xs font-pixel mb-1">ID (UNIQUE)</label>
+                                <label className="block text-slate-400 text-xs font-pixel mb-1">{t('UNIQUE_ID', language)}</label>
                                 <input type="text" value={newPlant.type} onChange={e => setNewPlant({...newPlant, type: e.target.value.toUpperCase()})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono" placeholder="MY_PLANT" />
                             </div>
                             <div>
-                                <label className="block text-slate-400 text-xs font-pixel mb-1">DISPLAY NAME</label>
+                                <label className="block text-slate-400 text-xs font-pixel mb-1">{t('DISPLAY_NAME', language)}</label>
                                 <input type="text" value={newPlant.name} onChange={e => setNewPlant({...newPlant, name: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" />
                             </div>
                          </div>
 
                          <div className="grid grid-cols-3 gap-4">
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">ICON</label><input type="text" value={newPlant.icon} onChange={e => setNewPlant({...newPlant, icon: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-center text-2xl" /></div>
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">COST</label><input type="number" value={newPlant.cost} onChange={e => setNewPlant({...newPlant, cost: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">HEALTH</label><input type="number" value={newPlant.health} onChange={e => setNewPlant({...newPlant, health: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">COOLDOWN</label><input type="number" value={newPlant.cooldown} onChange={e => setNewPlant({...newPlant, cooldown: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">SCALE</label><input type="number" step="0.1" value={newPlant.visualScale || 1.0} onChange={e => setNewPlant({...newPlant, visualScale: parseFloat(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('ICON', language)}</label><input type="text" value={newPlant.icon} onChange={e => setNewPlant({...newPlant, icon: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-center text-2xl" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('COST', language)}</label><input type="number" value={newPlant.cost} onChange={e => setNewPlant({...newPlant, cost: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('HEALTH', language)}</label><input type="number" value={newPlant.health} onChange={e => setNewPlant({...newPlant, health: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('COOLDOWN', language)}</label><input type="number" value={newPlant.cooldown} onChange={e => setNewPlant({...newPlant, cooldown: parseInt(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('SCALE', language)}</label><input type="number" step="0.1" value={newPlant.visualScale || 1.0} onChange={e => setNewPlant({...newPlant, visualScale: parseFloat(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
                          </div>
                          
                          <div>
-                             <label className="block text-slate-400 text-xs font-pixel mb-1">DESCRIPTION</label>
+                             <label className="block text-slate-400 text-xs font-pixel mb-1">{t('DESCRIPTION', language)}</label>
                              <textarea value={newPlant.description} onChange={e => setNewPlant({...newPlant, description: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-xs h-16 resize-none" />
                          </div>
 
                          {/* PLANT ABILITIES EDITOR */}
                          <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
                              <div className="flex justify-between mb-2">
-                                 <h4 className="text-yellow-400 font-pixel text-xs">SPECIAL ABILITIES</h4>
+                                 <h4 className="text-yellow-400 font-pixel text-xs">{t('SPECIAL_ABILITIES', language)}</h4>
                                  <div className="flex gap-1 flex-wrap justify-end">
                                      {['SHOOT', 'PRODUCE_SUN', 'EXPLODE', 'SQUASH', 'WALL'].map(type => (
                                          <button key={type} onClick={() => handleAddPlantAbility(type as PlantAbilityType)} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[9px] rounded border border-slate-600">
@@ -438,34 +385,34 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                                          <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
                                               {ability.type === 'SHOOT' && (
                                                  <>
-                                                     <label>Dmg: <input type="number" value={ability.damage} onChange={e => { const n=[...newPlant.abilities!]; n[i].damage=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-8 bg-slate-900 px-1 rounded text-white"/></label>
-                                                     <label>Int: <input type="number" value={ability.interval} onChange={e => { const n=[...newPlant.abilities!]; n[i].interval=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-10 bg-slate-900 px-1 rounded text-white"/></label>
-                                                     <label className="col-span-2">Type: <select value={ability.projectileType || 'NORMAL'} onChange={e => { const n=[...newPlant.abilities!]; n[i].projectileType=e.target.value as ProjectileType; setNewPlant({...newPlant, abilities:n}); }} className="bg-slate-900 px-1 rounded text-white text-[9px]"><option value="NORMAL">NORMAL</option><option value="FROZEN">FROZEN</option><option value="FIRE">FIRE</option></select></label>
+                                                     <label>{t('DAMAGE', language)}: <input type="number" value={ability.damage} onChange={e => { const n=[...newPlant.abilities!]; n[i].damage=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-8 bg-slate-900 px-1 rounded text-white"/></label>
+                                                     <label>{t('INTERVAL', language)}: <input type="number" value={ability.interval} onChange={e => { const n=[...newPlant.abilities!]; n[i].interval=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-10 bg-slate-900 px-1 rounded text-white"/></label>
+                                                     <label className="col-span-2">{t('PROJECTILE', language)}: <select value={ability.projectileType || 'NORMAL'} onChange={e => { const n=[...newPlant.abilities!]; n[i].projectileType=e.target.value as ProjectileType; setNewPlant({...newPlant, abilities:n}); }} className="bg-slate-900 px-1 rounded text-white text-[9px]"><option value="NORMAL">NORMAL</option><option value="FROZEN">FROZEN</option><option value="FIRE">FIRE</option></select></label>
                                                      <label className="col-span-2 flex justify-between items-center">
-                                                         <span>Direction:</span>
+                                                         <span>{t('DIRECTION', language)}:</span>
                                                          <select value={ability.projectileDirection || 'RIGHT'} onChange={e => { const n=[...newPlant.abilities!]; n[i].projectileDirection=e.target.value as AttackDirection; setNewPlant({...newPlant, abilities:n}); }} className="bg-slate-900 px-1 rounded text-white text-[9px]">
                                                              {Object.keys(DIRECTION_VECTORS).map(d => <option key={d} value={d}>{d}</option>)}
                                                          </select>
                                                      </label>
                                                      <label className="col-span-2 flex items-center gap-2">
                                                          <input type="checkbox" checked={!!ability.projectileHoming} onChange={e => { const n=[...newPlant.abilities!]; n[i].projectileHoming=e.target.checked; setNewPlant({...newPlant, abilities:n}); }} />
-                                                         <span>Homing Projectile?</span>
+                                                         <span>{t('HOMING', language)}</span>
                                                      </label>
                                                      <button 
                                                         onClick={() => { setEditingTarget('BULLET'); setEditingAbilityIndex(i); setShowPixelEditor(true); }}
                                                         className="col-span-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[9px]"
                                                      >
-                                                         {ability.projectileVisuals ? 'Edit Bullet Art ✓' : 'Create Bullet Art'}
+                                                         {ability.projectileVisuals ? `${t('EDIT_ART', language)} ✓` : t('CREATE_ART', language)}
                                                      </button>
                                                  </>
                                               )}
                                               {ability.type === 'PRODUCE_SUN' && (
-                                                  <label>Val: <input type="number" value={ability.sunValue} onChange={e => { const n=[...newPlant.abilities!]; n[i].sunValue=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-8 bg-slate-900 px-1 rounded text-white"/></label>
+                                                  <label>{t('SUN_VALUE', language)}: <input type="number" value={ability.sunValue} onChange={e => { const n=[...newPlant.abilities!]; n[i].sunValue=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-8 bg-slate-900 px-1 rounded text-white"/></label>
                                               )}
                                               {(ability.type === 'EXPLODE' || ability.type === 'SQUASH') && (
                                                   <>
-                                                    <label>Range: <input type="number" step="0.1" value={ability.triggerRange} onChange={e => { const n=[...newPlant.abilities!]; n[i].triggerRange=parseFloat(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-8 bg-slate-900 px-1 rounded text-white"/></label>
-                                                    <label>Dmg: <input type="number" value={ability.damage} onChange={e => { const n=[...newPlant.abilities!]; n[i].damage=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-10 bg-slate-900 px-1 rounded text-white"/></label>
+                                                    <label>{t('TRIGGER_RANGE', language)}: <input type="number" step="0.1" value={ability.triggerRange} onChange={e => { const n=[...newPlant.abilities!]; n[i].triggerRange=parseFloat(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-8 bg-slate-900 px-1 rounded text-white"/></label>
+                                                    <label>{t('DAMAGE', language)}: <input type="number" value={ability.damage} onChange={e => { const n=[...newPlant.abilities!]; n[i].damage=parseInt(e.target.value); setNewPlant({...newPlant, abilities:n}); }} className="w-10 bg-slate-900 px-1 rounded text-white"/></label>
                                                   </>
                                               )}
                                          </div>
@@ -478,28 +425,28 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                          <div>
                             <div className="flex gap-4 items-center">
                                 <button onClick={() => { setEditingTarget('PLANT'); setShowPixelEditor(true); }} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded shadow">
-                                    {newPlant.visuals ? 'EDIT PIXEL ART' : 'CREATE PIXEL ART'}
+                                    {newPlant.visuals ? t('EDIT_SPRITE', language) : t('EDIT_SPRITE', language)}
                                 </button>
                                 {newPlant.visuals && <span className="text-green-400 text-xs">✓ Custom Sprites Loaded</span>}
                             </div>
                          </div>
 
-                         <button onClick={handleAddPlant} className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-pixel rounded border-b-4 border-green-800 active:border-b-0 active:translate-y-1 shadow-lg">ADD TO DLC</button>
+                         <button onClick={handleAddPlant} className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-pixel rounded border-b-4 border-green-800 active:border-b-0 active:translate-y-1 shadow-lg">{t('ADD_TO_DLC', language)}</button>
                      </div>
 
                      <div className="w-1/3 bg-slate-900/50 rounded border border-slate-700 p-4">
-                         <h4 className="text-green-400 font-pixel mb-4 text-sm">ADDED PLANTS</h4>
+                         <h4 className="text-green-400 font-pixel mb-4 text-sm">{t('ADDED_PLANTS', language)}</h4>
                          <div className="space-y-2">
                              {dlcData.plants && dlcData.plants.map((p, i) => (
                                  <div key={i} className="flex items-center gap-3 bg-slate-800 p-2 rounded border border-slate-600">
                                      <span className="text-2xl">{p.icon}</span>
                                      <div className="min-w-0">
                                          <div className="text-xs font-bold text-white truncate" title={p.name}>{p.name}</div>
-                                         <div className="text-[9px] text-green-300 font-mono">{p.cost} SUN</div>
+                                         <div className="text-[9px] text-green-300 font-mono">{p.cost} ☀️</div>
                                      </div>
                                  </div>
                              ))}
-                             {(!dlcData.plants || dlcData.plants.length === 0) && <div className="text-slate-600 text-xs italic">No plants added.</div>}
+                             {(!dlcData.plants || dlcData.plants.length === 0) && <div className="text-slate-600 text-xs italic">{t('NO_ABILITIES', language)}</div>}
                          </div>
                      </div>
                  </div>
@@ -512,19 +459,19 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                           {/* ... [Copy Preset UI] ... */}
                          
                          <div>
-                            <label className="block text-slate-400 text-xs font-pixel mb-1">ID (UNIQUE)</label>
+                            <label className="block text-slate-400 text-xs font-pixel mb-1">{t('UNIQUE_ID', language)}</label>
                             <input type="text" value={newZombie.id} onChange={e => setNewZombie({...newZombie, id: e.target.value.toUpperCase()})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white font-mono" placeholder="MY_ZOMBIE" />
                          </div>
                          <div className="grid grid-cols-3 gap-4">
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">ICON</label><input type="text" value={newZombie.stats.icon} onChange={e => setNewZombie({...newZombie, stats: {...newZombie.stats, icon: e.target.value}})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-center text-2xl" /></div>
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">SPEED</label><input type="number" step="0.01" value={newZombie.stats.speed} onChange={e => setNewZombie({...newZombie, stats: {...newZombie.stats, speed: parseFloat(e.target.value)}})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
-                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">HEALTH</label><input type="number" value={newZombie.stats.health} onChange={e => setNewZombie({...newZombie, stats: {...newZombie.stats, health: parseInt(e.target.value)}})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('ICON', language)}</label><input type="text" value={newZombie.stats.icon} onChange={e => setNewZombie({...newZombie, stats: {...newZombie.stats, icon: e.target.value}})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-center text-2xl" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('SPEED', language)}</label><input type="number" step="0.01" value={newZombie.stats.speed} onChange={e => setNewZombie({...newZombie, stats: {...newZombie.stats, speed: parseFloat(e.target.value)}})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
+                             <div><label className="block text-slate-400 text-xs font-pixel mb-1">{t('HEALTH', language)}</label><input type="number" value={newZombie.stats.health} onChange={e => setNewZombie({...newZombie, stats: {...newZombie.stats, health: parseInt(e.target.value)}})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white" /></div>
                          </div>
 
                          {/* ABILITIES EDITOR */}
                          <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
                              <div className="flex justify-between mb-2">
-                                 <h4 className="text-yellow-400 font-pixel text-xs">SPECIAL ABILITIES</h4>
+                                 <h4 className="text-yellow-400 font-pixel text-xs">{t('SPECIAL_ABILITIES', language)}</h4>
                                  <div className="flex gap-1">
                                      {['SUMMON', 'VAULT', 'ICE_TRAIL', 'CRUSH_PLANTS'].map(type => (
                                          <button key={type} onClick={() => handleAddZombieAbility(type as ZombieAbilityType)} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[9px] rounded border border-slate-600">
@@ -542,7 +489,7 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                                              <button onClick={() => handleRemoveZombieAbility(i)} className="text-red-500 hover:text-red-300">✕</button>
                                          </div>
                                          <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-                                             <label>Cooldown: <input type="number" value={ability.cooldown} onChange={e => {
+                                             <label>{t('COOLDOWN', language)}: <input type="number" value={ability.cooldown} onChange={e => {
                                                  const n = [...(newZombie.stats.abilities || [])];
                                                  n[i].cooldown = parseInt(e.target.value);
                                                  setNewZombie({...newZombie, stats: {...newZombie.stats, abilities: n}});
@@ -550,7 +497,7 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                                              
                                              {ability.type === 'SUMMON' && (
                                                 <>
-                                                    <label>Count: <input type="number" value={ability.summonCount} onChange={e => {
+                                                    <label>{t('COUNT', language)}: <input type="number" value={ability.summonCount} onChange={e => {
                                                         const n = [...(newZombie.stats.abilities || [])];
                                                         n[i].summonCount = parseInt(e.target.value);
                                                         setNewZombie({...newZombie, stats: {...newZombie.stats, abilities: n}});
@@ -560,7 +507,7 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                                          </div>
                                      </div>
                                  ))}
-                                 {!newZombie.stats.abilities?.length && <div className="text-slate-600 italic text-[10px]">No abilities added.</div>}
+                                 {!newZombie.stats.abilities?.length && <div className="text-slate-600 italic text-[10px]">{t('NO_ABILITIES', language)}</div>}
                              </div>
                          </div>
                          
@@ -568,17 +515,17 @@ export const LevelEditor: React.FC<LevelEditorProps> = ({ onPlay, onBack }) => {
                          <div>
                             <div className="flex gap-4 items-center">
                                 <button onClick={() => { setEditingTarget('ZOMBIE'); setShowPixelEditor(true); }} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded shadow">
-                                    {newZombie.stats.visuals ? 'EDIT PIXEL ART' : 'CREATE PIXEL ART'}
+                                    {newZombie.stats.visuals ? t('EDIT_SPRITE', language) : t('EDIT_SPRITE', language)}
                                 </button>
                                 {newZombie.stats.visuals && <span className="text-green-400 text-xs">✓ Custom Sprites Loaded</span>}
                             </div>
                          </div>
 
-                         <button onClick={handleAddZombie} className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-pixel rounded border-b-4 border-red-800 active:border-b-0 active:translate-y-1 shadow-lg">ADD TO DLC</button>
+                         <button onClick={handleAddZombie} className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-pixel rounded border-b-4 border-red-800 active:border-b-0 active:translate-y-1 shadow-lg">{t('ADD_TO_DLC', language)}</button>
                      </div>
 
                      <div className="w-1/3 bg-slate-900/50 rounded border border-slate-700 p-4">
-                         <h4 className="text-red-400 font-pixel mb-4 text-sm">ADDED ZOMBIES</h4>
+                         <h4 className="text-red-400 font-pixel mb-4 text-sm">{t('ADDED_ZOMBIES', language)}</h4>
                          <div className="space-y-2">
                              {dlcData.zombies && Object.entries(dlcData.zombies).map(([id, s]) => {
                                  const stats = s as ZombieStatConfig;

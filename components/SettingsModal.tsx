@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { AppSettings } from '../types';
+import { t } from '../i18n';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onUpdateSettings }) => {
   if (!isOpen) return null;
+  const lang = settings.language || 'en';
 
   const handleVolumeChange = (type: 'musicVolume' | 'sfxVolume', val: string) => {
       const num = parseFloat(val);
@@ -26,19 +29,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       });
   };
 
+  const handleLanguageChange = (newLang: 'en' | 'zh') => {
+      onUpdateSettings({
+          ...settings,
+          language: newLang
+      });
+  };
+
   return (
     <div className="absolute inset-0 z-[2100] bg-black/80 flex items-center justify-center backdrop-blur-sm">
       <div className="bg-slate-800 border-4 border-slate-600 rounded-xl p-8 w-[500px] shadow-2xl">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl text-yellow-400 font-pixel drop-shadow-md">SETTINGS</h2>
+          <h2 className="text-3xl text-yellow-400 font-pixel drop-shadow-md">{t('SETTINGS_TITLE', lang)}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white font-bold text-xl">✕</button>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-6">
+           {/* Language Selector */}
+           <div className="bg-slate-700/50 p-6 rounded-lg border border-slate-600">
+               <div className="flex justify-between mb-2">
+                   <span className="text-white font-pixel text-sm">{t('LANGUAGE', lang)}</span>
+                   <span className="text-purple-400 font-pixel text-sm">{lang === 'en' ? 'ENGLISH' : '中文'}</span>
+               </div>
+               <div className="flex gap-2">
+                   <button 
+                     onClick={() => handleLanguageChange('en')}
+                     className={`flex-1 py-2 font-pixel text-xs rounded border-2 transition-colors ${lang === 'en' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'}`}
+                   >
+                       ENGLISH
+                   </button>
+                   <button 
+                     onClick={() => handleLanguageChange('zh')}
+                     className={`flex-1 py-2 font-pixel text-xs rounded border-2 transition-colors ${lang === 'zh' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'}`}
+                   >
+                       中文
+                   </button>
+               </div>
+           </div>
+
            {/* Music Volume */}
            <div className="bg-slate-700/50 p-6 rounded-lg border border-slate-600">
                <div className="flex justify-between mb-2">
-                   <span className="text-white font-pixel text-sm">MUSIC VOLUME</span>
+                   <span className="text-white font-pixel text-sm">{t('MUSIC_VOLUME', lang)}</span>
                    <span className="text-yellow-400 font-pixel text-sm">{Math.round(settings.musicVolume * 100)}%</span>
                </div>
                <input 
@@ -53,7 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
            {/* SFX Volume */}
            <div className="bg-slate-700/50 p-6 rounded-lg border border-slate-600">
                <div className="flex justify-between mb-2">
-                   <span className="text-white font-pixel text-sm">SOUND FX</span>
+                   <span className="text-white font-pixel text-sm">{t('SFX_VOLUME', lang)}</span>
                    <span className="text-yellow-400 font-pixel text-sm">{Math.round(settings.sfxVolume * 100)}%</span>
                </div>
                <input 
@@ -68,7 +100,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
            {/* Game Speed */}
            <div className="bg-slate-700/50 p-6 rounded-lg border border-slate-600">
                <div className="flex justify-between mb-2">
-                   <span className="text-white font-pixel text-sm">GAME SPEED</span>
+                   <span className="text-white font-pixel text-sm">{t('GAME_SPEED', lang)}</span>
                    <span className="text-blue-400 font-pixel text-sm">{settings.gameSpeed.toFixed(1)}x</span>
                </div>
                <input 
@@ -79,14 +111,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                  className="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
                />
                <div className="flex justify-between mt-2 text-[10px] text-slate-500 font-mono">
-                   <span>SLOW</span>
-                   <span>NORMAL</span>
-                   <span>FAST</span>
+                   <span>{t('SLOW', lang)}</span>
+                   <span>{t('NORMAL', lang)}</span>
+                   <span>{t('FAST', lang)}</span>
                </div>
            </div>
            
            <div className="text-center text-slate-500 text-xs font-pixel mt-4">
-               GAMEPLAY SETTINGS CONTROLLED BY SERVER
+               {t('SETTINGS_FOOTER', lang)}
            </div>
         </div>
 
