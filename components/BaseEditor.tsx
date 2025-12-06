@@ -233,12 +233,15 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack, language }) => {
                              const p = PLANT_STATS[key];
                              const isActive = selectedId === key;
                              // Use getLocalizedName to show translated names in sidebar if available
-                             // Since we are iterating KEYS of the global object, we can pass the object itself
-                             // However, getLocalizedName expects a config object.
                              const displayName = getLocalizedName({...p, type: key}, language);
+                             const idleAnim = (p.visuals?.['idle'] || p.visuals?.['walk']) as AnimationState | undefined;
+                             const pixelFrame = idleAnim?.frames?.[0];
+
                              return (
                                  <button key={key} onClick={() => handleSelectPlant(key)} className={`w-full flex items-center gap-3 p-2 rounded text-left transition-colors ${isActive ? 'bg-green-900/40 border border-green-500' : 'hover:bg-slate-800 border border-transparent'}`}>
-                                     <span className="text-xl w-8 text-center">{p.icon}</span>
+                                     <span className="text-xl w-8 text-center flex items-center justify-center overflow-hidden h-8">
+                                         {pixelFrame ? <img src={pixelFrame} className="w-full h-full object-contain image-pixelated" alt={displayName} /> : p.icon}
+                                     </span>
                                      <span className={`text-xs font-bold truncate ${isActive ? 'text-green-300' : 'text-slate-400'}`}>{displayName}</span>
                                  </button>
                              );
@@ -248,11 +251,15 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack, language }) => {
                              const z = ZOMBIE_STATS[key];
                              const isActive = selectedId === key;
                              // Zombies in BaseEditor don't have 'name' property usually, just ID. 
-                             // But tEntity handles ID lookup.
                              const displayName = tEntity(key, key, language);
+                             const idleAnim = (z.visuals?.['idle'] || z.visuals?.['walk']) as AnimationState | undefined;
+                             const pixelFrame = idleAnim?.frames?.[0];
+
                              return (
                                  <button key={key} onClick={() => handleSelectZombie(key)} className={`w-full flex items-center gap-3 p-2 rounded text-left transition-colors ${isActive ? 'bg-red-900/40 border border-red-500' : 'hover:bg-slate-800 border border-transparent'}`}>
-                                     <span className="text-xl w-8 text-center">{z.icon}</span>
+                                     <span className="text-xl w-8 text-center flex items-center justify-center overflow-hidden h-8">
+                                        {pixelFrame ? <img src={pixelFrame} className="w-full h-full object-contain image-pixelated" alt={displayName} /> : z.icon}
+                                     </span>
                                      <span className={`text-xs font-bold truncate ${isActive ? 'text-red-300' : 'text-slate-400'}`}>{displayName}</span>
                                  </button>
                              );
@@ -282,7 +289,7 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack, language }) => {
                                      {/* Preview */}
                                      {(() => {
                                          const visual = activeTab === 'PLANTS' ? editPlant?.visuals : editZombie?.visuals;
-                                         const idleAnim = visual?.['idle'] as AnimationState | undefined;
+                                         const idleAnim = (visual?.['idle'] || visual?.['walk']) as AnimationState | undefined;
                                          const firstFrame = idleAnim?.frames?.[0];
                                          return firstFrame ? (
                                              <img 
@@ -441,9 +448,9 @@ export const BaseEditor: React.FC<BaseEditorProps> = ({ onBack, language }) => {
                                                                 <div className="col-span-3 flex items-end gap-2 mt-2">
                                                                      {/* Projectile Preview */}
                                                                      <div className="w-10 h-10 bg-slate-950 border border-slate-700 rounded flex items-center justify-center overflow-hidden shrink-0 relative">
-                                                                         {ability.projectileVisuals?.['idle']?.frames?.[0] ? (
+                                                                         {(ability.projectileVisuals?.['idle'] as AnimationState)?.frames?.[0] ? (
                                                                              <img 
-                                                                                src={ability.projectileVisuals['idle'].frames[0]} 
+                                                                                src={(ability.projectileVisuals!['idle'] as AnimationState).frames[0]} 
                                                                                 className="w-full h-full object-contain image-pixelated" 
                                                                              />
                                                                          ) : (

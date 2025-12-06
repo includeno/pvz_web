@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -27,6 +28,35 @@
       }
       .animate-fall {
         animation: fall 3s ease-out forwards;
+      }
+      
+      /* New Animations */
+      @keyframes bounce-subtle {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-4%) scale(1.02); }
+      }
+      .animate-bounce-subtle {
+        animation: bounce-subtle 2s infinite ease-in-out;
+      }
+
+      @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .animate-spin-slow {
+        animation: spin-slow 12s linear infinite;
+      }
+      
+      @keyframes vibrate {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 2px); }
+        40% { transform: translate(-2px, -2px); }
+        60% { transform: translate(2px, 2px); }
+        80% { transform: translate(2px, -2px); }
+        100% { transform: translate(0); }
+      }
+      .animate-vibrate {
+        animation: vibrate 0.3s linear infinite;
       }
     </style>
   <script type="importmap">

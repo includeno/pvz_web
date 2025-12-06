@@ -45,16 +45,28 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
 
         {/* Selected Bar */}
         <div className="h-24 bg-slate-800 rounded-lg border-2 border-slate-600 flex items-center px-2 gap-2 overflow-hidden shadow-inner justify-center shrink-0">
-           {selectedPlants.map(type => (
-             <div 
-               key={type} 
-               onClick={() => onTogglePlant(type)}
-               className="w-16 h-20 bg-green-900/80 border-2 border-green-500 rounded cursor-pointer hover:bg-red-900/50 flex flex-col items-center justify-center group shrink-0"
-             >
-                <span className="text-3xl group-hover:scale-90 transition-transform">{PLANT_STATS[type].icon}</span>
-                <span className="text-[10px] text-green-100 mt-1 font-pixel">{PLANT_STATS[type].cost}</span>
-             </div>
-           ))}
+           {selectedPlants.map(type => {
+             const stats = PLANT_STATS[type];
+             const idleAnim = (stats.visuals?.['idle'] || stats.visuals?.['walk']) as AnimationState | undefined;
+             const pixelFrame = idleAnim?.frames?.[0];
+             
+             return (
+               <div 
+                 key={type} 
+                 onClick={() => onTogglePlant(type)}
+                 className="w-16 h-20 bg-green-900/80 border-2 border-green-500 rounded cursor-pointer hover:bg-red-900/50 flex flex-col items-center justify-center group shrink-0"
+               >
+                  <span className="text-3xl group-hover:scale-90 transition-transform overflow-hidden w-full h-12 flex items-center justify-center">
+                    {pixelFrame ? (
+                       <img src={pixelFrame} className="w-full h-full object-contain image-pixelated" alt={stats.name} />
+                    ) : (
+                       stats.icon
+                    )}
+                  </span>
+                  <span className="text-[10px] text-green-100 mt-1 font-pixel">{stats.cost}</span>
+               </div>
+             )
+           })}
            {Array.from({ length: Math.max(0, maxSeeds - selectedPlants.length) }).map((_, i) => (
              <div key={`empty-${i}`} className="w-16 h-20 bg-black/20 border-2 border-dashed border-slate-700 rounded shrink-0" />
            ))}
@@ -69,7 +81,9 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
                   {allPlants.map(plant => {
                     const isUnlocked = unlockedPlants.includes(plant.type);
                     const isSelected = selectedPlants.includes(plant.type);
-                    
+                    const idleAnim = (plant.visuals?.['idle'] || plant.visuals?.['walk']) as AnimationState | undefined;
+                    const pixelFrame = idleAnim?.frames?.[0];
+
                     return (
                       <div
                         key={plant.type}
@@ -93,7 +107,13 @@ export const PlantSelector: React.FC<PlantSelectorProps> = ({ selectedPlants, on
                             </>
                          ) : (
                             <>
-                                <span className="text-4xl mb-1 drop-shadow-lg">{plant.icon}</span>
+                                <span className="text-4xl mb-1 drop-shadow-lg w-full h-12 flex items-center justify-center overflow-hidden">
+                                    {pixelFrame ? (
+                                        <img src={pixelFrame} className="w-full h-full object-contain image-pixelated" alt={plant.name} />
+                                    ) : (
+                                        plant.icon
+                                    )}
+                                </span>
                                 <span className="text-xs text-amber-100 font-bold font-pixel">{plant.cost}</span>
                                 {isSelected && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">

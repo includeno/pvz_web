@@ -53,7 +53,9 @@ export enum BasePlantType {
   // New Large Plant
   COB_CANNON = 'COB_CANNON',
   // New Multi-Direction Plant
-  STARFRUIT = 'STARFRUIT'
+  STARFRUIT = 'STARFRUIT',
+  // Technical
+  PLACEHOLDER = 'PLACEHOLDER'
 }
 export type PlantType = BasePlantType | PlantTypeString;
 
@@ -130,6 +132,7 @@ export interface Plant extends Entity {
   createdAt: number;
   state?: 'IDLE' | 'ATTACK' | 'CHARGING'; // Added state for animation control
   abilityCooldowns: Record<string, number>; // New: Track individual ability CDs (e.g. sun production)
+  parentId?: string; // For multi-tile plants (Placeholders point to main)
 }
 
 export interface Zombie extends Entity {

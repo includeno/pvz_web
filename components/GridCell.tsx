@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Plant, LevelScene, AnimationState, BasePlantType } from '../types';
 import { PLANT_STATS } from '../constants';
@@ -33,7 +34,9 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
           break;
       case LevelScene.LAWN_DAY:
       default:
-          bgClass = isColOdd ? 'bg-green-700' : 'bg-green-600'; // Classic Stripes
+          // Checkerboard pattern for classic lawn (Light Green / Darker Green)
+          // Matches the pixel art reference
+          bgClass = isOdd ? 'bg-[#4caf50]' : 'bg-[#388e3c]'; 
           break;
   }
 
@@ -100,6 +103,23 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
       }
   }
 
+  // --- SPECIAL RENDER FOR PLACEHOLDER ---
+  // If it's a placeholder, we render NOTHING visibly, but the cell exists.
+  if (plant && plant.type === BasePlantType.PLACEHOLDER) {
+      return (
+          <div
+            className={`
+                relative w-full h-full border-white/5 border-r-[1px] border-b-[1px]
+                ${bgClass}
+                ${highlightClass}
+            `}
+            style={{ zIndex: 10 + row }}
+          >
+              {/* Optional: Add debug border if needed, but keeping it clean */}
+          </div>
+      );
+  }
+
   return (
     <div
       className={`
@@ -133,9 +153,19 @@ export const GridCell: React.FC<GridCellProps> = React.memo(({ row, col, plant, 
         <div 
             className={`relative animate-bounce-subtle pointer-events-none w-full h-full flex items-center justify-center`}
             style={{
-                transform: `scale(${visualScale})`,
-                transformOrigin: 'bottom center', // Grow upwards/outwards from base
-                zIndex: visualScale > 1.2 ? 50 : 10 // Boost Z if mega plant
+                // If Cob Cannon, we want it 200% width and starting from left to span 2 cells.
+                // Since this component is a flex center, we need to adjust slightly.
+                // Actually, positioning it absolutely inside relative is best for spanning.
+                ...(plant.type === BasePlantType.COB_CANNON ? {
+                    width: '200%', // Span 2 cells
+                    transform: `scale(${visualScale}) translateX(25%)`, // Offset to center on the 2-cell block (25% of 200% width is 50% of 1 cell width)
+                    zIndex: 60, // Ensure it draws over neighbor
+                    transformOrigin: 'bottom center'
+                } : {
+                    transform: `scale(${visualScale})`,
+                    transformOrigin: 'bottom center',
+                    zIndex: visualScale > 1.2 ? 50 : 10
+                })
             }}
         >
           {currentFrameSrc ? (
